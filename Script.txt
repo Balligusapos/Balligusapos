@@ -1,5 +1,5 @@
 getgenv().Settings = {
-    ["StandMaster"] = "SabooooohaX",
+    ["StandMaster"] = "bozo",
     ["StandAlt"] = "JenniferCross6",
 }
 getgenv().Cmds = {
