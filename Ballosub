@@ -1,0 +1,17 @@
+for i,v in pairs(game.Players.LocalPlayer.Backpack:GetChildren()) do
+        if v.name == "Pencil" then
+            v.Parent = game.Players.LocalPlayer.Character
+        end
+    end
+--you must equip pencil then put the player name in "putusernamehere" it should be full or else it not gonna work
+local A_1 = game:GetService("Workspace").putusernamehere.Humanoid
+local Event = game:GetService("Workspace")[game.Players.LocalPlayer.Name].Pencil.DamageRemote
+
+local function damage()
+Event:FireServer(A_1)
+wait(0.5)
+Event:FireServer(A_1)
+wait(0.5)
+Event:FireServer(A_1)
+end
+damage()
