@@ -1,0 +1,49 @@
+
+-- // Logins: // --
+
+local Usernames = {
+["Toxic"] = true;
+}
+
+local Passwords = {
+["Administrator"] = true;
+}
+
+
+-- // Variables: // --
+
+local Login = game.CoreGui.Login
+
+local Key = Login.Main.WhitelistFrame.Key
+
+local Username = Login.Main.UserFrame.UserBox
+
+local Userpassed = false
+
+local WLPassed = false
+
+
+
+-- // Login Function: // --
+
+if Usernames[Username.Text] then
+Userpassed = true
+else
+game.Players.LocalPlayer:Kick("Invalid username.")
+end
+
+if Passwords[Key.Text] then
+WLPassed = true
+else
+game.Players.LocalPlayer:Kick("Invalid whitelist key.")
+end
+
+if Userpassed == true then
+if WLPassed == true then
+--[[
+PUT YOUR CODE HERE, ANYTHING AFTER THIS WILL RUN IF THEY GET THE RIGHT PASSWORD AND USERNAME
+--]]
+
+
+end
+end
