@@ -1,11 +1,11 @@
 -- // Logins: // --
 
 local Usernames = {
-["Toxic"] = true;
+["sub1"] = true;
 }
 
 local Passwords = {
-["Administrator"] = true;
+["sub2"] = true;
 }
 
 
