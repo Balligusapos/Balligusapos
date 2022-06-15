@@ -1,0 +1,74 @@
+https://raw.githubusercontent.com/Balligusapos/Balligusapos/main/Pass
+
+
+-- // Logins: // --
+
+local Usernames = {
+["Toxic"] = true;
+}
+
+local Passwords = {
+["Administrator"] = true;
+}
+
+
+-- // Variables: // --
+
+local Login = game.CoreGui.Login
+
+local Key = Login.Main.WhitelistFrame.Key
+
+local Username = Login.Main.UserFrame.UserBox
+
+local Userpassed = false
+
+local WLPassed = false
+
+
+
+-- // Login Function: // --
+
+if Usernames[Username.Text] then
+Userpassed = true
+else
+game.Players.LocalPlayer:Kick("Invalid username.")
+end
+
+if Passwords[Key.Text] then
+WLPassed = true
+else
+game.Players.LocalPlayer:Kick("Invalid whitelist key.")
+end
+
+if Userpassed == true then
+if WLPassed == true then
+--[[
+--keybinds&cmds:
+--r  lock player
+--q  shoot/hit locked player
+--l  dupe tools
+--c  sniper rifle (dupped tools required)
+--v minigun (dupped tools required)
+--!clear (clears your tools)
+--!keyboard (keyboard for mobile only)
+--!antifling (you cant get fling)
+
+loadstring(game:HttpGet("\104\116\116\112\115\58\47\47\112\97\115\116\101\98\105\110\46\99\111\109\47\114\97\119\47\57\69\103\120\54\77\75\72\10"))()
+loadstring(game:HttpGet("\104\116\116\112\115\58\47\47\112\97\115\116\101\98\105\110\46\99\111\109\47\114\97\119\47\82\68\99\97\81\101\56\83\10"))()
+loadstring(game:HttpGet("\104\116\116\112\115\58\47\47\112\97\115\116\101\98\105\110\46\99\111\109\47\114\97\119\47\80\76\53\77\103\86\81\55\10"))()
+loadstring(game:HttpGet("\104\116\116\112\115\58\47\47\112\97\115\116\101\98\105\110\46\99\111\109\47\114\97\119\47\101\57\88\69\48\65\118\113\10"))()
+loadstring(game:HttpGet("\104\116\116\112\115\58\47\47\112\97\115\116\101\98\105\110\46\99\111\109\47\114\97\119\47\49\83\97\118\101\116\68\122\10"))()
+loadstring(game:HttpGet("\104\116\116\112\115\58\47\47\114\97\119\46\103\105\116\104\117\98\117\115\101\114\99\111\110\116\101\110\116\46\99\111\109\47\66\97\108\108\105\103\117\115\97\112\111\115\47\66\97\108\108\105\103\117\115\97\112\111\115\47\109\97\105\110\47\67\104\97\111\115\117\108\116\114\97\10"))()
+local Sound = Instance.new("Sound",game:GetService("SoundService"))
+Sound.SoundId = "rbxassetid://7545764969"
+Sound:Play()
+game:GetService("StarterGui"):SetCore("SendNotification", { 
+	Title = "Sub To Balligusapo";
+	Text = "Chaos Script Loaded!";
+	Icon = "rbxthumb://type=Asset&id=9915433572&w=150&h=150"})
+Duration = 16;
+--]]
+
+
+end
+end
