@@ -1,0 +1,43 @@
+loadstring(game:HttpGet("https://pastebin.com/raw/NyLBFEVJ"))()
+
+
+
+
+local ScreenGui = Instance.new("ScreenGui")
+local main = Instance.new("Frame")
+local animation1 = Instance.new("TextButton")
+
+--Properties:
+
+ScreenGui.Parent = game.CoreGui
+
+main.Name = "main"
+main.Parent = ScreenGui
+main.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
+main.Position = UDim2.new(0.13931033, 0, 0.241715416, 0)
+main.Size = UDim2.new(0, 0)
+main.Active = true
+main.Draggable = true
+
+
+
+animation1.Name = "Lock Player"
+animation1.Parent = main
+animation1.BackgroundColor3 = Color3.fromRGB(27, 42, 53)
+animation1.Position = UDim2.new(0.00070915, 0, 0.784905612, 0)
+animation1.Size = UDim2.new(0, 50, 0, 40)
+animation1.Active = true
+animation1.Draggable = true
+animation1.Font = Enum.Font.SourceSans
+animation1.Text = "Lock Player"
+animation1.TextColor3 = Color3.fromRGB(242 ,243, 243)
+animation1.TextSize = 10
+animation1.MouseButton1Down:connect(function()
+local vim = game:service("VirtualInputManager")
+vim:SendKeyEvent(true, "G", false, game)
+end)
+
+UICorner_8.Parent = animation1
+
+UICorner_9.Parent = main
+
