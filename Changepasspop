@@ -28,13 +28,13 @@ local WLPassed = false
 if Usernames[Username.Text] then
 Userpassed = true
 else
-game.Players.LocalPlayer:Kick("Invalid key make sure its not capital")
+game.Players.LocalPlayer:Kick("Invalid key make sure its all correct")
 end
 
 if Passwords[Key.Text] then
 WLPassed = true
 else
-game.Players.LocalPlayer:Kick("Invalid key make sure its not capital")
+game.Players.LocalPlayer:Kick("Invalid key make sure its all correct")
 end
 
 if Userpassed == true then
