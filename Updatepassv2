@@ -1,7 +1,7 @@
 -- // Logins: // --
 
 local Usernames = {
-["thanksballi"] = false;
+["thanksballi"] = true;
 }
 
 local Passwords = {
@@ -26,7 +26,7 @@ local WLPassed = false
 -- // Login Function: // --
 
 if Usernames[Username.Text] then
-Userpassed = false
+Userpassed = true
 else
 game.Players.LocalPlayer:Kick("Oops! Invalid key make sure its all correct")
 end
