@@ -64,7 +64,7 @@ for i,v in pairs(workspace.Dropped:GetChildren()) do
    end
 end
 end)
-Section:NewButton("Change Server", "ButtonInfo", function()
+Section:NewButton("Rejoin Server", "ButtonInfo", function()
 game:GetService("TeleportService"):Teleport(game.PlaceId, game.Players.LocalPlayer)
 end)
 
