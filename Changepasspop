@@ -1,11 +1,11 @@
 -- // Logins: // --
 
 local Usernames = {
-["akoaybobo"] = true;
+["ihadsmallduck"] = true;
 }
 
 local Passwords = {
-["akoaybobo"] = true;
+["ihadsmallduck"] = true;
 }
 
 
