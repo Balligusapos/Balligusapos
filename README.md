@@ -10,7 +10,6 @@ local Usernames = {
 
 local Login = game.CoreGui.Login
 
-local Key = Login.Main.WhitelistFrame.Key
 
 local Username = Login.Main.UserFrame.UserBox
 
