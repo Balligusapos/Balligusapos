@@ -1,7 +1,7 @@
 -- // Logins: // --
 
 local Usernames = {
-["obama"] = true;
+["WNIGHTMARE"] = true;
 }
 
 local Passwords = {
