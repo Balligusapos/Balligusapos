@@ -21,7 +21,7 @@ _G.Key = nil          -- Clear the key from memory for safety
 print("Access Granted! Loading DHB Official...")
 
 local function main()
-  -- [[ ERIK JOSHUA C. ARNEDO - ULTIMATE 2D PHYSICS & CAMERA SUITE ]]
+-- [[ ERIK JOSHUA C. ARNEDO - ULTIMATE 2D PHYSICS & CAMERA SUITE ]]
 -- Features: Max Zoom, Freecam, God, Ghost, Inf Jump, Fly
 
 local Players = game:GetService("Players")
@@ -56,12 +56,23 @@ local Settings = {
 
 local function checkMessage(message)
     if not Settings.AutoLeave then return end
+    
     local lowerMsg = string.lower(message)
-    if string.find(lowerMsg, "nuked") or string.find(lowerMsg, "banned") then
+    
+    -- This checks if "banned" or "nuked" is present
+    local hasKeyword = string.find(lowerMsg, "banned") or string.find(lowerMsg, "nuked")
+    
+    -- This checks if there is at least one dash "-" anywhere in the string
+    local hasDash = string.find(lowerMsg, "%-")
+
+    -- It ONLY leaves if BOTH are true
+    if hasKeyword and hasDash then
+        warn("System signature detected! Leaving...")
         game:GetService("ReplicatedStorage").Remotes.RequestPlayerExitWorld:InvokeServer()
     end
 end
 
+-- Chat + Console Logs
 game:GetService("TextChatService").MessageReceived:Connect(function(msg) checkMessage(msg.Text) end)
 game:GetService("LogService").MessageOut:Connect(function(msg) checkMessage(msg) end)
 
@@ -1490,7 +1501,7 @@ end)
 
 --SPAMMER--
 
-print("Erik's Suite: Freecam and Zoom Control Loaded.")
+print("CLIENT LOADED")
 end
 
 -- This line is now "guarded" by the returns above
