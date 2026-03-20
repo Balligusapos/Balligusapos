@@ -1451,9 +1451,9 @@ end)
 local ToggleBtn = Instance.new("TextButton", Main)
 ToggleBtn.Size = UDim2.new(1, -20, 0, 30)
 ToggleBtn.Position = UDim2.new(0, 10, 0, 115)
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 220, 150)
 ToggleBtn.Text = "START SPAMMER"
-ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
+ToggleBtn.TextColor3 = Color3.fromRGB(0,0,0)
 ToggleBtn.Font = Enum.Font.GothamBold
 ToggleBtn.TextSize = 12
 Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 6)
@@ -1515,17 +1515,19 @@ ToggleBtn.MouseButton1Click:Connect(function()
     Config.Enabled = not Config.Enabled
     
     if Config.Enabled then
-        -- What happens when the Spammer STARTS
+        -- SPAMMER IS NOW ON (Show Red to Stop)
         ToggleBtn.Text = "STOP SPAMMER"
-        ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 220, 150) -- Green
+        ToggleBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50) -- RED
+        
         StatusVal.Text = "RUNNING"
-        StatusVal.TextColor3 = Color3.fromRGB(100, 255, 150) -- Optional: Make status text green too
+        StatusVal.TextColor3 = Color3.fromRGB(0,0,0) -- Reddish status
     else
-        -- What happens when the Spammer STOPS
+        -- SPAMMER IS NOW OFF (Show Green to Start)
         ToggleBtn.Text = "START SPAMMER"
-        ToggleBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50) -- Red
+        ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 220, 150) -- GREEN
+        
         StatusVal.Text = "READY"
-        StatusVal.TextColor3 = Color3.fromRGB(100, 200, 255) -- Back to Blue
+        StatusVal.TextColor3 = Color3.fromRGB(0,0,0) -- Greenish status
         TimerVal.Text = "0s"
     end
 end)
@@ -1571,4 +1573,4 @@ end)
 
 --SPAMMER--
 
-print("CLIENT MOD MENU DOY!!!")
+print("CLIENT MOD MENU DOY!")
