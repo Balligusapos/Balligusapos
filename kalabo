@@ -1186,24 +1186,34 @@ local function StartDropProcess()
     end)
 end
 
--- [[ BUTTON DETECTOR ]] --
+-- [[ THE NEUTRALIZER: CLICKABLE BUT POWERLESS ]] --
 local function HookDropButton(obj)
+    -- Target any button named "DropButton"
     if obj:IsA("TextButton") and obj.Name == "DropButton" then
+        
+        -- We override the behavior by connecting a new function 
+        -- and NOT calling the Remote.
         obj.MouseButton1Click:Connect(function()
-            local slot, itemData = FindValidSlot()
-            if slot then
-                local batch = tonumber(AmountInput.Text) or 1
-                PlayerDropRemote:FireServer(slot, batch)
-                PromptEvent:FireServer({["ButtonAction"] = "drp", ["Inputs"] = {["amt"] = tostring(batch)}})
-                SessionDroppedCount = SessionDroppedCount + batch
-            end
+            -- 1. Reset the manager's textbox to 0 for safety
+            AmountInput.Text = "0"
+            
+            -- 2. Visual feedback so you know it was intercepted
+            local originalText = obj.Text
+            obj.Text = "DOYTEAMDABEST"
+            task.delay(0.5, function()
+                if obj then obj.Text = originalText end
+            end)
+
+            -- 3. LOGIC GAP: Notice we are NOT calling PlayerDropRemote here.
+            -- This effectively "swallows" the intent to drop.
+            warn("Manual Drop Intercepted: Amount reset to 0.")
         end)
     end
 end
 
+-- Re-run the hooks
 for _, v in pairs(PlayerGui:GetDescendants()) do HookDropButton(v) end
 PlayerGui.DescendantAdded:Connect(HookDropButton)
-
 -- [[ UPDATED SELECTION HOOK ]] --
 task.spawn(function()
     while not InventoryMod.SlotButtons do task.wait(0.5) end
@@ -1468,4 +1478,4 @@ end)
 
 --SPAMMER--
 
-print("CLIENT MOD MENU LOADED!!!")
+print("CLIENT MOD MENU DOY ON TOP!")
