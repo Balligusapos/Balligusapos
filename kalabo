@@ -967,7 +967,7 @@ ScreenGui.IgnoreGuiInset = true
 local Main = Instance.new("Frame", ScreenGui)
 Main.Name = "MainFrame"
 Main.Position = UDim2.new(0.5, -95, 0.4, 0)
-Main.Size = UDim2.new(0, 190, 0, 380) 
+Main.Size = UDim2.new(0, 190, 0, 420) 
 Main.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
 Main.BorderSizePixel = 0
 Main.Active = true
@@ -975,7 +975,6 @@ Main.Draggable = true
 Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
 Instance.new("UIStroke", Main).Color = Color3.fromRGB(45, 45, 45)
 
--- Minecraft Tilt Icon
 local MainIcon = Instance.new("ImageLabel", Main)
 MainIcon.Size = UDim2.new(0, 30, 0, 30) 
 MainIcon.AnchorPoint = Vector2.new(0.5, 0.5)
@@ -987,8 +986,8 @@ task.spawn(function()
     local t = 0
     while MainIcon and MainIcon.Parent do
         t = t + 0.05
-        MainIcon.Rotation = math.sin(t * 2) * 15 -- MC Tilt
-        local s = 0.9 + (math.sin(t * 1.5) * 0.1) -- Pulsing
+        MainIcon.Rotation = math.sin(t * 2) * 15
+        local s = 0.9 + (math.sin(t * 1.5) * 0.1)
         MainIcon.Size = UDim2.new(0, 30 * s, 0, 30 * s)
         task.wait(0.01)
     end
@@ -1004,7 +1003,7 @@ Title.TextSize = 11
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.BackgroundTransparency = 1
 
-local ItemDisplay = Instance.new("TextBox", Main)
+local ItemDisplay = Instance.new("TextLabel", Main)
 ItemDisplay.Size = UDim2.new(1, -20, 0, 30)
 ItemDisplay.Position = UDim2.new(0, 10, 0, 45)
 ItemDisplay.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
@@ -1012,7 +1011,7 @@ ItemDisplay.Text = "Holding: None"
 ItemDisplay.TextColor3 = Color3.fromRGB(255, 200, 0)
 ItemDisplay.Font = Enum.Font.GothamBold
 ItemDisplay.TextSize = 11
-ItemDisplay.TextEditable = false
+ItemDisplay.BorderSizePixel = 0
 Instance.new("UICorner", ItemDisplay).CornerRadius = UDim.new(0, 6)
 
 local AmountInput = Instance.new("TextBox", Main)
@@ -1035,9 +1034,32 @@ ToggleBtn.Font = Enum.Font.GothamBold
 ToggleBtn.TextSize = 12
 Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 6)
 
+-- [[ SILENT MODE: DEFAULT OFF ]] --
+local SilentMode = false
+local SilentBtn = Instance.new("TextButton", Main)
+SilentBtn.Size = UDim2.new(1, -20, 0, 25)
+SilentBtn.Position = UDim2.new(0, 10, 0, 155)
+SilentBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+SilentBtn.Text = "SHOW UI: ON"
+SilentBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
+SilentBtn.Font = Enum.Font.GothamBold
+SilentBtn.TextSize = 10
+Instance.new("UICorner", SilentBtn).CornerRadius = UDim.new(0, 4)
+
+SilentBtn.MouseButton1Click:Connect(function()
+    SilentMode = not SilentMode
+    if SilentMode then
+        SilentBtn.Text = "SHOW UI: OFF"
+        SilentBtn.TextColor3 = Color3.fromRGB(255, 100, 100)
+    else
+        SilentBtn.Text = "SHOW UI: ON"
+        SilentBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
+    end
+end)
+
 local ScrollFrame = Instance.new("ScrollingFrame", Main)
-ScrollFrame.Position = UDim2.new(0, 5, 0, 160)
-ScrollFrame.Size = UDim2.new(1, -10, 1, -170)
+ScrollFrame.Position = UDim2.new(0, 5, 0, 190)
+ScrollFrame.Size = UDim2.new(1, -10, 1, -200)
 ScrollFrame.BackgroundTransparency = 1
 ScrollFrame.ScrollBarThickness = 0 
 ScrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
@@ -1095,22 +1117,15 @@ local function GetTotal()
     return t
 end
 
--- [[ COLLECTION AWARE AUTO-UPDATE ]] --
 task.spawn(function()
     while task.wait(0.1) do
         if LockedId then
             local currentTotal = GetTotal()
             local goal = tonumber(AmountInput.Text) or 0
-            
-            -- Detect Collection: If inventory grew, reset session stats
-            if currentTotal > LastTotal and not isDropping then
-                SessionDroppedCount = 0
-            end
-            
+            if currentTotal > LastTotal and not isDropping then SessionDroppedCount = 0 end
             HoldingVal.Text = tostring(currentTotal)
             DroppedVal.Text = tostring(SessionDroppedCount)
             RemainingVal.Text = tostring(math.max(0, goal - SessionDroppedCount))
-            
             LastTotal = currentTotal
         end
     end
@@ -1126,6 +1141,18 @@ local function FindValidSlot()
     return nil, nil
 end
 
+-- Bypass UI Logic
+PlayerGui.ChildAdded:Connect(function(child)
+    if child.Name == "UIPromptUI" and SilentMode then
+        task.defer(function()
+            child:Destroy()
+            pcall(function() 
+                require(LocalPlayer.PlayerScripts:FindFirstChild("PlayerMovement", true)).InputActive = true 
+            end)
+        end)
+    end
+end)
+
 local function StartDropProcess()
     if not LockedId then return end
     if isDropping then isDropping = false return end
@@ -1138,10 +1165,9 @@ local function StartDropProcess()
 
     task.spawn(function()
         while isDropping and SessionDroppedCount < goal do
-            for i = 1, 5 do -- Burst
+            for i = 1, 5 do 
                 local slot, itemData = FindValidSlot()
                 if not slot then break end
-
                 local batch = math.min(goal - SessionDroppedCount, tonumber(itemData.Amount), 250)
                 
                 PlayerDropRemote:FireServer(slot, batch)
@@ -1160,25 +1186,58 @@ local function StartDropProcess()
     end)
 end
 
--- Selection Hook
+-- [[ BUTTON DETECTOR ]] --
+local function HookDropButton(obj)
+    if obj:IsA("TextButton") and obj.Name == "DropButton" then
+        obj.MouseButton1Click:Connect(function()
+            local slot, itemData = FindValidSlot()
+            if slot then
+                local batch = tonumber(AmountInput.Text) or 1
+                PlayerDropRemote:FireServer(slot, batch)
+                PromptEvent:FireServer({["ButtonAction"] = "drp", ["Inputs"] = {["amt"] = tostring(batch)}})
+                SessionDroppedCount = SessionDroppedCount + batch
+            end
+        end)
+    end
+end
+
+for _, v in pairs(PlayerGui:GetDescendants()) do HookDropButton(v) end
+PlayerGui.DescendantAdded:Connect(HookDropButton)
+
+-- [[ UPDATED SELECTION HOOK ]] --
 task.spawn(function()
     while not InventoryMod.SlotButtons do task.wait(0.5) end
+    
     local function Hook(btns, isHot)
         for i, btn in pairs(btns) do
             btn.MouseButton1Click:Connect(function()
-                if isDropping then return end
+                -- 1. Identify the item
                 local idx = i
-                if isHot then idx = InventoryMod.HotbarStacks[i] and InventoryMod.HotbarStacks[i][1] end
+                if isHot then 
+                    idx = InventoryMod.HotbarStacks[i] and InventoryMod.HotbarStacks[i][1] 
+                end
+                
                 local data = InventoryMod.Stacks[idx]
                 if data and data.Id then
+                    -- 2. Lock for the script
                     LockedId = data.Id
                     ItemDisplay.Text = "Holding: " .. (ItemsManager.GetName(data.Id) or "Item")
                     SessionDroppedCount = 0
                     LastTotal = GetTotal()
+                    
+                    -- 3. FIX: Also tell the game to open the manual drop UI
+                    -- This allows you to drop manually even while the script is loaded
+                    if not isDropping then
+                        PromptEvent:FireServer({
+                            ["ButtonAction"] = "sel", -- 'sel' tells the game you selected it
+                            ["Slot"] = idx
+                        })
+                    end
                 end
             end)
         end
     end
+    
     Hook(InventoryMod.SlotButtons, false)
     Hook(InventoryMod.HotbarSlotButtons, true)
 end)
@@ -1409,4 +1468,4 @@ end)
 
 --SPAMMER--
 
-print("CLIENT MOD MENU LOADED")
+print("CLIENT MOD MENU LOADED!!!")
