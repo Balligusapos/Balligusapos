@@ -1513,10 +1513,21 @@ local TimerVal = CreateResultBox("NEXT CHAT IN", "6031225818", Color3.fromRGB(10
 -- // LOGIC //
 ToggleBtn.MouseButton1Click:Connect(function()
     Config.Enabled = not Config.Enabled
-    ToggleBtn.Text = Config.Enabled and "STOP SPAMMER" or "START SPAMMER"
-    ToggleBtn.BackgroundColor3 = Config.Enabled and Color3.fromRGB(0, 220, 150) or Color3.fromRGB(150, 50, 50)
-    StatusVal.Text = Config.Enabled and "RUNNING" or "READY"
-    if not Config.Enabled then TimerVal.Text = "0s" end
+    
+    if Config.Enabled then
+        -- What happens when the Spammer STARTS
+        ToggleBtn.Text = "STOP SPAMMER"
+        ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 220, 150) -- Green
+        StatusVal.Text = "RUNNING"
+        StatusVal.TextColor3 = Color3.fromRGB(100, 255, 150) -- Optional: Make status text green too
+    else
+        -- What happens when the Spammer STOPS
+        ToggleBtn.Text = "START SPAMMER"
+        ToggleBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50) -- Red
+        StatusVal.Text = "READY"
+        StatusVal.TextColor3 = Color3.fromRGB(100, 200, 255) -- Back to Blue
+        TimerVal.Text = "0s"
+    end
 end)
 
 local function isTagged(text)
