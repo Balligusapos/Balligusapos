@@ -1117,6 +1117,41 @@ local function GetTotal()
     return t
 end
 
+-- [[ THE FIX: ONLY SNAP IF ITEM IS SELECTED ]] --
+AmountInput:GetPropertyChangedSignal("Text"):Connect(function()
+    local cleanText = AmountInput.Text:gsub("%D", "") -- Keep only numbers
+    
+    -- If the box is empty, don't force a 0 yet, let them type
+    if cleanText == "" then 
+        AmountInput.Text = ""
+        return 
+    end
+
+    local currentTotal = GetTotal()
+    local enteredValue = tonumber(cleanText) or 0
+
+    -- FIX: Only restrict the amount if LockedId is NOT nil
+    if LockedId ~= nil then
+        if enteredValue > currentTotal then
+            AmountInput.Text = tostring(currentTotal)
+        else
+            AmountInput.Text = cleanText
+        end
+    else
+        -- If no item is selected, just let them type the number
+        -- It will be validated later when they click START
+        AmountInput.Text = cleanText
+    end
+end)
+-- Safety check when the keyboard closes
+AmountInput.FocusLost:Connect(function()
+    local currentTotal = GetTotal()
+    local enteredValue = tonumber(AmountInput.Text) or 0
+    if currentTotal > 0 and enteredValue > currentTotal then
+        AmountInput.Text = tostring(currentTotal)
+    end
+end)
+
 task.spawn(function()
     while task.wait(0.1) do
         if LockedId then
@@ -1484,4 +1519,4 @@ end)
 
 --SPAMMER--
 
-print("CLIENT MOD MENU DOY ON TOP!!!")
+print("CLIENT MOD MENU DOY BEST!!!")
