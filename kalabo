@@ -1102,30 +1102,71 @@ local HoldingVal = CreateResultBox("ITEM TOTAL", "922932229", Color3.fromRGB(100
 local DroppedVal = CreateResultBox("SESSION DROPPED", "6031225818", Color3.fromRGB(100, 255, 100))
 local RemainingVal = CreateResultBox("REMAINING NEEDED", "6023426926", Color3.fromRGB(255, 100, 100))
 
---- [[ LOGIC CORE ]] ---
+--- [[ SNAPSHOT-SAFE LOGIC ]] ---
 local LockedId = nil
 local isDropping = false
 local SessionDroppedCount = 0
-local LastTotal = 0
+local SlotLocks = {} 
 
 local function GetTotal()
     local t = 0
     if not LockedId then return 0 end
+    -- Only count if InventoryMod actually has data to prevent the "0" bug
+    if not InventoryMod.Stacks or #InventoryMod.Stacks == 0 then return LastTotal end 
+    
     for _, data in pairs(InventoryMod.Stacks) do
-        if data and data.Id == LockedId then t = t + (tonumber(data.Amount) or 0) end
+        if data and data.Id == LockedId then 
+            t = t + (tonumber(data.Amount) or 0) 
+        end
     end
     return t
 end
 
+local function FindValidSlot()
+    if not LockedId then return nil, nil end
+    for slot, data in pairs(InventoryMod.Stacks) do
+        -- Check if slot exists and isn't locked by an active drop task
+        if data and data.Id == LockedId and (tonumber(data.Amount) or 0) > 0 and not SlotLocks[slot] then
+            return slot, data
+        end
+    end
+    return nil, nil
+end
+
+--- [[ LOGIC CORE - FIXED ]] ---
+local LockedId = nil
+local isDropping = false
+local SessionDroppedCount = 0
+local LastTotal = 0
+local SlotLocks = {} -- Tracks pending drops to prevent over-dropping
+
+local function GetTotal()
+    local t = 0
+    if not LockedId then return 0 end
+    -- If the game temporarily clears the table, return the last known good total
+    local stacks = InventoryMod.Stacks
+    if not stacks or next(stacks) == nil then return LastTotal end
+
+    for _, data in pairs(stacks) do
+        if data and data.Id == LockedId then 
+            t = t + (tonumber(data.Amount) or 0) 
+        end
+    end
+    return t
+end
+
+-- UI Update Loop
 task.spawn(function()
     while task.wait(0.1) do
         if LockedId then
             local currentTotal = GetTotal()
             local goal = tonumber(AmountInput.Text) or 0
-            if currentTotal > LastTotal and not isDropping then SessionDroppedCount = 0 end
+            
+            -- Update UI
             HoldingVal.Text = tostring(currentTotal)
             DroppedVal.Text = tostring(SessionDroppedCount)
             RemainingVal.Text = tostring(math.max(0, goal - SessionDroppedCount))
+            
             LastTotal = currentTotal
         end
     end
@@ -1134,24 +1175,14 @@ end)
 local function FindValidSlot()
     if not LockedId then return nil, nil end
     for slot, data in pairs(InventoryMod.Stacks) do
-        if data and data.Id == LockedId and (tonumber(data.Amount) or 0) > 0 then
+        local amt = tonumber(data.Amount) or 0
+        -- Only pick slots that have items and aren't currently "Locked" in a drop
+        if data and data.Id == LockedId and amt > 0 and not SlotLocks[slot] then
             return slot, data
         end
     end
     return nil, nil
 end
-
--- Bypass UI Logic
-PlayerGui.ChildAdded:Connect(function(child)
-    if child.Name == "UIPromptUI" and SilentMode then
-        task.defer(function()
-            child:Destroy()
-            pcall(function() 
-                require(LocalPlayer.PlayerScripts:FindFirstChild("PlayerMovement", true)).InputActive = true 
-            end)
-        end)
-    end
-end)
 
 local function StartDropProcess()
     if not LockedId then return end
@@ -1160,27 +1191,57 @@ local function StartDropProcess()
     local goal = tonumber(AmountInput.Text) or 0
     isDropping = true
     SessionDroppedCount = 0 
+    local pendingAmount = 0 -- Items currently in the air
+    
     ToggleBtn.Text = "STOP DROPPING"
     ToggleBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
 
     task.spawn(function()
-        while isDropping and SessionDroppedCount < goal do
+        while isDropping and (SessionDroppedCount + pendingAmount) < goal do
+            -- Instant Burst
             for i = 1, 5 do 
+                -- Stop if we reached the goal with pending items
+                if (SessionDroppedCount + pendingAmount) >= goal or not isDropping then break end
+
                 local slot, itemData = FindValidSlot()
                 if not slot then break end
-                local batch = math.min(goal - SessionDroppedCount, tonumber(itemData.Amount), 250)
-                
-                PlayerDropRemote:FireServer(slot, batch)
-                PromptEvent:FireServer({["ButtonAction"] = "drp", ["Inputs"] = {["amt"] = tostring(batch)}})
 
-                if InventoryMod.Stacks[slot] then
-                    InventoryMod.Stacks[slot].Amount = InventoryMod.Stacks[slot].Amount - batch
+                local currentAmt = tonumber(itemData.Amount) or 0
+                local needed = goal - (SessionDroppedCount + pendingAmount)
+                local batch = math.min(needed, currentAmt, 250)
+
+                if batch > 0 then
+                    SlotLocks[slot] = true -- Lock the slot so we don't double-drop it
+                    pendingAmount = pendingAmount + batch
+
+                    task.spawn(function()
+                        -- Fire Server
+                        PlayerDropRemote:FireServer(slot, batch)
+                        PromptEvent:FireServer({["ButtonAction"] = "drp", ["Inputs"] = {["amt"] = tostring(batch)}})
+                        
+                        -- Wait for the server to actually update the inventory
+                        local timeout = 0
+                        repeat 
+                            task.wait(0.05) 
+                            timeout = timeout + 1
+                            local updatedSlot = InventoryMod.Stacks[slot]
+                            local newAmt = updatedSlot and tonumber(updatedSlot.Amount) or 0
+                        until newAmt < currentAmt or timeout > 20
+                        
+                        -- Transfer from Pending to Confirmed
+                        pendingAmount = pendingAmount - batch
+                        SessionDroppedCount = SessionDroppedCount + batch
+                        SlotLocks[slot] = nil -- Unlock the slot
+                    end)
                 end
-                SessionDroppedCount = SessionDroppedCount + batch
             end
-            task.wait(0.05)
+            task.wait(0.03) -- Small delay to keep it stable
         end
+        
+        -- Cleanup
+        repeat task.wait() until pendingAmount <= 0 or not isDropping
         isDropping = false
+        table.clear(SlotLocks)
         ToggleBtn.Text = "START MULTI-DROP"
         ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 220, 150)
     end)
@@ -1484,4 +1545,4 @@ end)
 
 --SPAMMER--
 
-print("CLIENT MOD MENU DOY BEST!!!")
+print("CLIENT MOD MENU DOY IS BEST!!!")
