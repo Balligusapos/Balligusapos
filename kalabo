@@ -1057,6 +1057,21 @@ SilentBtn.MouseButton1Click:Connect(function()
     end
 end)
 
+game:GetService("Players").LocalPlayer.PlayerGui.ChildAdded:Connect(function(child)
+    if SilentMode and child.Name == "UIPromptUI" then
+        task.defer(function()
+            -- Instantly close the prompt so it doesn't block the screen
+            child:Destroy()
+            
+            -- Re-enable movement if the game's UI froze you
+            local moveScript = game:GetService("Players").LocalPlayer.PlayerScripts:FindFirstChild("PlayerMovement", true)
+            if moveScript then
+                pcall(function() require(moveScript).InputActive = true end)
+            end
+        end)
+    end
+end)
+
 local ScrollFrame = Instance.new("ScrollingFrame", Main)
 ScrollFrame.Position = UDim2.new(0, 5, 0, 190)
 ScrollFrame.Size = UDim2.new(1, -10, 1, -200)
@@ -1545,4 +1560,4 @@ end)
 
 --SPAMMER--
 
-print("CLIENT MOD MENU DOY IS BEST!!!")
+print("CLIENT MOD MENU DOY!!!")
