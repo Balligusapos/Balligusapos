@@ -1787,7 +1787,7 @@ local LOG_LIFESPAN = 12
 local AUTO_CLEAR = true 
 local ONLY_ME = false
 local CURRENT_SEARCH = ""
-local LOG_TEXT_SIZE = 8 -- Default starting size
+local LOG_TEXT_SIZE = 8 
 
 -- UI Setup
 local ScreenGui = Instance.new("ScreenGui", CoreGui)
@@ -1817,16 +1817,16 @@ Title.TextXAlignment = Enum.TextXAlignment.Left
 local SizeUp = Instance.new("TextButton", MainFrame)
 SizeUp.Size = UDim2.new(0, 18, 0, 18)
 SizeUp.Position = UDim2.new(1, -125, 0, 3)
-SizeUp.Text = "+" -- Changed from ▲
+SizeUp.Text = "+" 
 SizeUp.TextColor3 = Color3.new(1, 1, 1)
 SizeUp.BackgroundTransparency = 1
 SizeUp.Font = Enum.Font.Code
-SizeUp.TextSize = 14 -- Slightly larger for better visibility
+SizeUp.TextSize = 14 
 
 local SizeDown = Instance.new("TextButton", MainFrame)
 SizeDown.Size = UDim2.new(0, 18, 0, 18)
 SizeDown.Position = UDim2.new(1, -145, 0, 3)
-SizeDown.Text = "-" -- Changed from ▼
+SizeDown.Text = "-" 
 SizeDown.TextColor3 = Color3.new(1, 1, 1)
 SizeDown.BackgroundTransparency = 1
 SizeDown.Font = Enum.Font.Code
@@ -1846,6 +1846,13 @@ ClearBtn.Position = UDim2.new(1, -85, 0, 4)
 ClearBtn.Image = ICON_CLEAR
 ClearBtn.BackgroundTransparency = 1
 ClearBtn.ImageColor3 = Color3.fromRGB(200, 50, 50)
+
+local ScanBtn = Instance.new("ImageButton", MainFrame)
+ScanBtn.Size = UDim2.new(0, 16, 0, 16)
+ScanBtn.Position = UDim2.new(1, -110, 0, 4)
+ScanBtn.Image = ICON_SEARCH
+ScanBtn.BackgroundTransparency = 1
+ScanBtn.ImageColor3 = Color3.fromRGB(0, 255, 150)
 
 local OnlyMeBtn = Instance.new("TextButton", MainFrame)
 OnlyMeBtn.Size = UDim2.new(0, 70, 0, 16)
@@ -1914,17 +1921,51 @@ local function shakeUI(obj)
     obj.Position = origPos
 end
 
+local createLog
+
+local function performCawScan()
+    local inventory = {}
+    local statusLog = createLog("SYSTEM", "WORLD", ICON_SEARCH, "SCANNING", true, ICON_SYSTEM)
+    local label = statusLog:WaitForChild("DetailLabel", 2)
+    
+    local scanning = true
+    task.spawn(function()
+        local dots = 0
+        while scanning and label and label.Parent do
+            dots = (dots + 1) % 4
+            label.Text = "SYSTEM | SCANNING" .. string.rep(".", dots)
+            task.wait(0.3)
+        end
+    end)
+
+    -- The actual indexing
+    for _, item in ipairs(DropsFolder:GetChildren()) do
+        if item:IsA("BasePart") then
+            local id = item:GetAttribute("id")
+            local name = (id and ItemsManager.GetName(id)) or item.Name or "ITEM"
+            local amt = item:GetAttribute("amount") or 1
+            inventory[name] = (inventory[name] or 0) + amt
+        end
+    end
+    
+    task.wait(0.4) 
+    scanning = false
+    if label then label.Text = "SYSTEM | SCAN COMPLETE" end
+
+    -- Output totals
+    for name, total in pairs(inventory) do
+        createLog("WORLD", "TOTAL", ICON_AUTO, name .. " x" .. total, true, ICON_SYSTEM)
+    end
+end
+
 local function updateAllLogSizes()
     for _, log in ipairs(LogContainer:GetChildren()) do
         if log:IsA("Frame") then
-            -- Adjust frame height based on text size
             log.Size = UDim2.new(1, 0, 0, LOG_TEXT_SIZE + 8)
-            
-            -- Update every text element inside the log
             for _, child in ipairs(log:GetChildren()) do
                 if child:IsA("TextLabel") then
                     if child.Name == "TimeLabel" then
-                        child.TextSize = LOG_TEXT_SIZE - 1 -- Keep timer slightly smaller
+                        child.TextSize = LOG_TEXT_SIZE - 1
                     else
                         child.TextSize = LOG_TEXT_SIZE
                     end
@@ -1938,7 +1979,7 @@ SizeUp.MouseButton1Click:Connect(function()
     if LOG_TEXT_SIZE < 16 then
         LOG_TEXT_SIZE = LOG_TEXT_SIZE + 1
         updateAllLogSizes()
-        Title.TextSize = 12 -- Brief visual pop
+        Title.TextSize = 12
         task.delay(0.1, function() Title.TextSize = 11 end)
     end
 end)
@@ -1954,15 +1995,12 @@ OnlyMeBtn.MouseButton1Click:Connect(function()
     ONLY_ME = not ONLY_ME
     OnlyMeBtn.Text = ONLY_ME and "MY LOGS: ON" or "MY LOGS: OFF"
     OnlyMeBtn.TextColor3 = ONLY_ME and Color3.fromRGB(0, 255, 120) or Color3.new(1, 1, 1)
-    
-    -- Hide/Show existing logs based on the new setting
     for _, log in ipairs(LogContainer:GetChildren()) do
         if log:IsA("Frame") and log:GetAttribute("SearchTag") then
             local isLocalLog = log:GetAttribute("IsLocal")
             if ONLY_ME then
                 log.Visible = isLocalLog == true
             else
-                -- If turning off filter, respect the Search Bar state
                 local searchMatch = log:GetAttribute("SearchTag"):find(CURRENT_SEARCH) ~= nil
                 log.Visible = searchMatch
             end
@@ -1979,6 +2017,11 @@ end)
 ClearBtn.MouseButton1Click:Connect(function()
     shakeUI(ClearBtn)
     for _, v in ipairs(LogContainer:GetChildren()) do if v:IsA("Frame") then v:Destroy() end end
+end)
+
+ScanBtn.MouseButton1Click:Connect(function()
+    shakeUI(ScanBtn)
+    performCawScan()
 end)
 
 SearchInput:GetPropertyChangedSignal("Text"):Connect(function()
@@ -2002,29 +2045,22 @@ MinBtn.MouseButton1Click:Connect(function()
     MinBtn.Text = IsMin and "+" or "—"
 end)
 
-local function createLog(pName, status, actionIcon, itemText, isLocal, customPlayerIcon)
+createLog = function(pName, status, actionIcon, itemText, isLocal, customPlayerIcon)
     if ONLY_ME and not isLocal then return nil end
-
     local logEntry = Instance.new("Frame", LogContainer)
     logEntry.Size = UDim2.new(1, 0, 0, LOG_TEXT_SIZE + 8)
     logEntry.BackgroundTransparency = 1
-    
-    local createdAt = tick() -- Capture the exact spawn time
+    local createdAt = tick()
     logEntry:SetAttribute("IsLocal", isLocal)
-    
     local searchTag = (pName .. status .. itemText):lower()
     logEntry:SetAttribute("SearchTag", searchTag)
     logEntry.Visible = searchTag:find(CURRENT_SEARCH) ~= nil
-
     local txtColor = isLocal and Color3.fromRGB(0, 255, 120) or Color3.new(1, 1, 1)
-
-    -- Icons and Status (keeping your existing logic)
     local aIcon = Instance.new("ImageLabel", logEntry)
     aIcon.Size = UDim2.new(0, 14, 0, 14)
     aIcon.Position = UDim2.new(0, 2, 0.5, -7)
     aIcon.Image = actionIcon
     aIcon.BackgroundTransparency = 1
-
     local statusLbl = Instance.new("TextLabel", logEntry)
     statusLbl.Size = UDim2.new(0, 50, 1, 0)
     statusLbl.Position = UDim2.new(0, 20, 0, 0)
@@ -2034,14 +2070,11 @@ local function createLog(pName, status, actionIcon, itemText, isLocal, customPla
     statusLbl.Font = Enum.Font.Code
     statusLbl.TextSize = LOG_TEXT_SIZE
     statusLbl.TextXAlignment = Enum.TextXAlignment.Left
-
     local pIcon = Instance.new("ImageLabel", logEntry)
     pIcon.Size = UDim2.new(0, 14, 0, 14)
     pIcon.Position = UDim2.new(0, 75, 0.5, -7)
     pIcon.Image = customPlayerIcon or ICON_PLAYER
     pIcon.BackgroundTransparency = 1
-
-    -- Adjusted Detail Label Size (Width reduced from -95 to -145 to fit timer)
     local detailLbl = Instance.new("TextLabel", logEntry)
     detailLbl.Name = "DetailLabel"
     detailLbl.Size = UDim2.new(1, -145, 1, 0)
@@ -2052,9 +2085,8 @@ local function createLog(pName, status, actionIcon, itemText, isLocal, customPla
     detailLbl.Font = Enum.Font.Code
     detailLbl.TextSize = LOG_TEXT_SIZE
     detailLbl.TextXAlignment = Enum.TextXAlignment.Left
-
- local timerLbl = Instance.new("TextLabel", logEntry)
-    timerLbl.Name = "TimeLabel" -- <--- ADD THIS LINE
+    local timerLbl = Instance.new("TextLabel", logEntry)
+    timerLbl.Name = "TimeLabel"
     timerLbl.Size = UDim2.new(0, 45, 1, 0)
     timerLbl.Position = UDim2.new(1, -48, 0, 0)
     timerLbl.BackgroundTransparency = 1
@@ -2063,26 +2095,17 @@ local function createLog(pName, status, actionIcon, itemText, isLocal, customPla
     timerLbl.Font = Enum.Font.Code
     timerLbl.TextSize = LOG_TEXT_SIZE - 1
     timerLbl.TextXAlignment = Enum.TextXAlignment.Right
-
-    -- Live Time Update Loop
     task.spawn(function()
         while logEntry and logEntry.Parent do
             local diff = math.floor(tick() - createdAt)
-            if diff < 60 then
-                timerLbl.Text = diff .. "s ago"
-            else
-                timerLbl.Text = math.floor(diff/60) .. "m ago"
-            end
+            timerLbl.Text = diff < 60 and diff .. "s ago" or math.floor(diff/60) .. "m ago"
             task.wait(1)
         end
     end)
-
-    -- Persistent Auto-Clear Logic
-    if pName ~= "SYSTEM" then
+    if pName ~= "SYSTEM" and pName ~= "WORLD" then
         task.spawn(function()
             while logEntry and logEntry.Parent do
                 task.wait(1)
-                -- Only proceed with clearing if AUTO_CLEAR is true AND time is up
                 if AUTO_CLEAR and (tick() - createdAt) >= LOG_LIFESPAN then
                     local t = TweenService:Create(detailLbl, TweenInfo.new(1), {TextTransparency = 1})
                     TweenService:Create(statusLbl, TweenInfo.new(1), {TextTransparency = 1}):Play()
@@ -2090,49 +2113,34 @@ local function createLog(pName, status, actionIcon, itemText, isLocal, customPla
                     TweenService:Create(aIcon, TweenInfo.new(1), {ImageTransparency = 1}):Play()
                     TweenService:Create(timerLbl, TweenInfo.new(1), {TextTransparency = 1}):Play()
                     t:Play()
-                    t.Completed:Connect(function() 
-                        if logEntry.Parent then logEntry:Destroy() end 
-                    end)
-                    break -- Exit loop after starting destruction
+                    t.Completed:Connect(function() if logEntry.Parent then logEntry:Destroy() end end)
+                    break
                 end
             end
         end)
     end
-    
     return logEntry
 end
 
 -- Detection
 local function handleItem(item)
     if not item:IsA("BasePart") then return end
-    
     local function info()
         local id = item:GetAttribute("id")
         return (id and ItemsManager.GetName(id)) or item.Name or "ITEM", item:GetAttribute("amount") or 1
     end
-
     task.spawn(function()
-        -- Wait briefly for attributes/position to replicate fully
         task.wait(0.1) 
-        
         local name, amt = info()
-        local ownerName = "WORLD"
-        local isLocal = false
-        local closestDist = 15 -- Max distance to consider a "drop"
-
+        local ownerName, isLocal, closestDist = "WORLD", false, 15
         for _, p in ipairs(Players:GetPlayers()) do
             if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
                 local dist = (p.Character.HumanoidRootPart.Position - item.Position).Magnitude
-                if dist < closestDist then
-                    closestDist = dist
-                    ownerName = p.DisplayName
-                    isLocal = (p == LocalPlayer)
-                end
+                if dist < closestDist then closestDist, ownerName, isLocal = dist, p.DisplayName, (p == LocalPlayer) end
             end
         end
         createLog(ownerName, "DROPPED", ICON_DROP, name .. " x" .. amt, isLocal)
     end)
-
     item:GetAttributeChangedSignal("t"):Connect(function()
         local t = item:GetAttribute("t")
         if t then
@@ -2148,19 +2156,18 @@ end
 -- Initial Setup
 DropsFolder.ChildAdded:Connect(handleItem)
 
+-- [[ REMOVED THE AUTO-SCAN TASK.SPAWN BLOCK FROM HERE ]]
+
 local loadingLog = createLog("SYSTEM", "LOADED!", ICON_AUTO, "LOGS RUNNING", true, ICON_SYSTEM)
 
 if loadingLog then
     task.spawn(function()
-        local label = loadingLog:WaitForChild("DetailLabel", 5)
-        local dots = 0
+        local label, dots = loadingLog:WaitForChild("DetailLabel", 5), 0
         
-        -- This loop will now run forever (until you trash it)
         while loadingLog and loadingLog.Parent and label do
             dots = (dots + 1) % 4
             local extension = string.rep(".", dots)
             
-            -- Specifically update the "RUNNING" part of the text
             label.Text = "SYSTEM | LOGS RUNNING" .. extension
             
             task.wait(0.5)
