@@ -24,6 +24,7 @@ local Settings = {
     SpeedHack = false,
     AntiKnockback = false,
     AutoLeave = false,
+    AutoWarn = false,
     SpeedMultiplier = 0.4, -- The default value you requested
     PingFake = false,
     PingBuffer = {},
@@ -31,13 +32,47 @@ local Settings = {
     FreecamSpeed = 1.2
 }
 
-local function checkMessage(message)
-    if not Settings.AutoLeave then return end
-    local lowerMsg = string.lower(message)
-    if string.find(lowerMsg, "nuked") or string.find(lowerMsg, "banned") then
-        game:GetService("ReplicatedStorage").Remotes.RequestPlayerExitWorld:InvokeServer()
+local function sendAutoWarn()
+    local phrases = {
+        "MODS ARE HERE - PACK UP",
+        "STAFF SPOTTED. WATCH OUT.",
+        "ADMIN IN SERVER. STAY LOW.",
+        "LOGS DETECTED MOD ACTIVITY.",
+        "MODERATOR DETECTED. ABORT.",
+        "SERVER UNDER WATCH. BE CAREFUL."
+    }
+    
+    local randomMsg = phrases[math.random(1, #phrases)]
+    local fullMsg = "[WARNING]: " .. randomMsg
+    
+    -- Using the remote you provided
+    local remote = game:GetService("ReplicatedStorage"):FindFirstChild("CB")
+    if remote then
+        remote:FireServer(fullMsg)
     end
 end
+
+local function checkMessage(message)
+    local lowerMsg = string.lower(message)
+    local isThreat = string.find(lowerMsg, "nuked") or string.find(lowerMsg, "banned") or string.find(lowerMsg, "admin")
+
+    if isThreat then
+        -- Handle Auto-Warn
+        if Settings.AutoWarn then
+            sendAutoWarn()
+        end
+        
+        -- Handle Auto-Leave
+        if Settings.AutoLeave then
+            task.wait(0.5) -- Small delay so the warn sends first
+            game:GetService("ReplicatedStorage").Remotes.RequestPlayerExitWorld:InvokeServer()
+        end
+    end
+end
+
+-- Listeners
+game:GetService("TextChatService").MessageReceived:Connect(function(msg) checkMessage(msg.Text) end)
+game:GetService("LogService").MessageOut:Connect(function(msg) checkMessage(msg) end)
 
 game:GetService("TextChatService").MessageReceived:Connect(function(msg) checkMessage(msg.Text) end)
 game:GetService("LogService").MessageOut:Connect(function(msg) checkMessage(msg) end)
@@ -421,6 +456,7 @@ CreateToggle("AUTO-COLLECT", "Magnet")
 CreateToggle("SPEED-HACK", "SpeedHack")
 CreateToggle("ANTI-KNOCKBACK", "AntiKnockback")
 CreateToggle("AUTO-LEAVE", "AutoLeave")
+CreateToggle("AUTO-WARN", "AutoWarn")
 
 -- [[ 5. PRECISION IMAGE CROSSHAIR & TELEPORT ]]
 local CrossGui = Instance.new("ScreenGui", Player.PlayerGui)
