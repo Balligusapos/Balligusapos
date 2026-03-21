@@ -3,8 +3,9 @@ local Players = game:GetService("Players")
 local LocalPlayer = Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
---// INITIALIZE //--
+--// SETTINGS //--
 local Whitelist = _G.G_Whitelist or {}
+local Prefix = _G.Prefix or ":"
 local KickMsg = _G.DefaultKickMessage or "Kicked."
 
 --// HELPERS //--
@@ -17,7 +18,6 @@ local function getTarget(str)
     if not str then return nil end
     local lowStr = str:lower()
     if lowStr == "all" or lowStr == "everyone" then return "all" end
-    
     for _, p in pairs(Players:GetPlayers()) do
         if p.Name:lower():sub(1, #lowStr) == lowStr or p.DisplayName:lower():sub(1, #lowStr) == lowStr then
             return p
@@ -35,16 +35,13 @@ Commands.check = function()
 end
 
 Commands.changename = function(sender, args, fullText)
-    local newName = fullText:sub(13):gsub("'", ""):gsub('"', "")
-    if newName == "" then return end
+    local newName = fullText:sub(fullText:find(" ") + 1)
     local char = sender.Character
-    if char then
-        local tagUI = char:FindFirstChild("NameTagUI", true)
-        local label = tagUI and tagUI:FindFirstChild("Text", true)
-        if label then
-            label.Text = newName
-            if label:FindFirstChild("Shadow") then label.Shadow.Text = newName end
-        end
+    local tagUI = char and char:FindFirstChild("NameTagUI", true)
+    local label = tagUI and tagUI:FindFirstChild("Text", true)
+    if label then
+        label.Text = newName
+        if label:FindFirstChild("Shadow") then label.Shadow.Text = newName end
     end
 end
 
@@ -63,9 +60,7 @@ end
 Commands.kick = function(sender, args, _, isTargeted)
     if not isTargeted then return end
     local reason = table.concat(args, " ", 2) or KickMsg
-    if not Whitelist[LocalPlayer.Name] then
-        LocalPlayer:Kick("\n" .. reason)
-    end
+    if LocalPlayer.Name ~= sender.Name then LocalPlayer:Kick("\n" .. reason) end
 end
 
 Commands.say = function(sender, args, _, isTargeted)
@@ -84,11 +79,7 @@ end
 Commands.leave = function(sender, args, _, isTargeted)
     if not isTargeted then return end
     local rem = ReplicatedStorage:WaitForChild("Remotes", 3):FindFirstChild("RequestPlayerExitWorld")
-    if rem and rem:IsA("RemoteFunction") then
-        rem:InvokeServer()
-    else
-        LocalPlayer:Kick("Relocating...")
-    end
+    if rem then rem:InvokeServer() else LocalPlayer:Kick("Leaving...") end
 end
 
 Commands.freeze = function(sender, args, _, isTargeted)
@@ -103,55 +94,58 @@ Commands.unfreeze = function(sender, args, _, isTargeted)
     if root then root.Anchored = false end
 end
 
---// PROCESSING //--
+--// ENGINE //--
 local lastCmd = ""
 local function processMsg(sender, fullText)
-    if not Whitelist[sender.Name] or fullText == lastCmd then return end
+    -- 1. Whitelist Check
+    if not Whitelist[sender.Name] then return end
+    
+    -- 2. Prefix Check (Fixes accidental firing)
+    if fullText:sub(1, #Prefix) ~= Prefix then return end
+    
+    -- 3. Debounce Check
+    if fullText == lastCmd then return end
     lastCmd = fullText
     task.delay(0.5, function() lastCmd = "" end)
 
     local split = fullText:split(" ")
-    local cmdName = split[1] and split[1]:lower():gsub(":", "")
-    if not cmdName then return end
-
-    local target = getTarget(split[2])
+    local cmdName = split[1]:sub(#Prefix + 1):lower() -- Remove prefix and lowercase
+    
+    table.remove(split, 1) -- Remove command name from args
+    local target = getTarget(split[1])
     local isTargeted = (target == "all" or target == LocalPlayer)
 
     if Commands[cmdName] then
+        print("[ADMIN] Executing: " .. cmdName)
         Commands[cmdName](sender, split, fullText, isTargeted)
     end
 end
 
 --// HOOKS //--
 local function hook(plr)
-    if Whitelist[plr.Name] then
-        plr.Chatted:Connect(function(msg) processMsg(plr, msg) end)
-    end
+    plr.Chatted:Connect(function(msg) processMsg(plr, msg) end)
 end
 
--- Bubble Chat Hook
+-- Bubble Chat Detection (For games with custom chat)
 task.spawn(function()
     local pGui = LocalPlayer:WaitForChild("PlayerGui")
-    while true do
-        local bChat = pGui:FindFirstChild("BubbleChat")
-        local bList = bChat and bChat:FindFirstChild("BubbleChatList", true)
-        if bList then
-            bList.ChildAdded:Connect(function(child)
-                task.wait(0.1)
-                local tl = child:FindFirstChildWhichIsA("TextLabel", true)
-                if tl then
-                    for _, admin in pairs(Players:GetPlayers()) do
-                        if Whitelist[admin.Name] then processMsg(admin, tl.Text) end
-                    end
+    local bChat = pGui:WaitForChild("BubbleChat", 10)
+    local bList = bChat and bChat:FindFirstChild("BubbleChatList", true)
+    if bList then
+        bList.ChildAdded:Connect(function(child)
+            task.wait(0.1)
+            local tl = child:FindFirstChildWhichIsA("TextLabel", true)
+            if tl then
+                -- Identify sender via proximity or name if possible (Fallback to Whitelist search)
+                for _, admin in pairs(Players:GetPlayers()) do
+                    if Whitelist[admin.Name] then processMsg(admin, tl.Text) end
                 end
-            end)
-            break
-        end
-        task.wait(0.5)
+            end
+        end)
     end
 end)
 
 for _, p in pairs(Players:GetPlayers()) do hook(p) end
 Players.PlayerAdded:Connect(hook)
 
-print("[CLOUD] Admin System Active.")
+print("lol")
