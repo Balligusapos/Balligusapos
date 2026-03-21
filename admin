@@ -29,8 +29,8 @@ end
 --// COMMAND REPOSITORY //--
 local Commands = {}
 
--- [NEW] :RESET Command (Restores original Name and Tag)
-Commands.reset = function(sender)
+-- [NEW] :RESET (Restores original Name and Tag)
+Commands.reset = function(sender, args, fullText, isTargeted)
     local char = sender.Character
     if char then
         local tagUI = char:FindFirstChild("NameTagUI", true)
@@ -39,18 +39,15 @@ Commands.reset = function(sender)
             local iconLabel = tagUI:FindFirstChild("Icon", true)
             local iconText = iconLabel and iconLabel:FindFirstChild("TextLabel")
 
-            -- Restore to original Roblox Name/Display
             if label then 
                 label.Text = sender.DisplayName 
                 if label:FindFirstChild("Shadow") then label.Shadow.Text = sender.DisplayName end
             end
             
-            -- Reset Country Tag (Usually empty or default)
             if iconText then iconText.Text = "" end
             sender:SetAttribute("country", "")
         end
     end
-    print("[ADMIN] Reset visuals for: " .. sender.Name)
 end
 
 Commands.check = function()
@@ -84,13 +81,45 @@ Commands.changetag = function(sender, args)
     end
 end
 
+Commands.kick = function(sender, args, _, isTargeted)
+    if not isTargeted then return end
+    local reason = table.concat(args, " ", 2)
+    if reason == "" then reason = KickMsg end
+    if LocalPlayer.Name ~= sender.Name then LocalPlayer:Kick("\n" .. reason) end
+end
+
+Commands.say = function(sender, args, _, isTargeted)
+    if not isTargeted then return end
+    local msg = table.concat(args, " ", 2)
+    local cb = ReplicatedStorage:FindFirstChild("CB")
+    if cb and msg ~= "" then cb:FireServer(msg) end
+end
+
 Commands.kill = function(sender, args, _, isTargeted)
     if not isTargeted then return end
     local rem = ReplicatedStorage:WaitForChild("Remotes", 3):FindFirstChild("PlayerHurtMe")
     if rem then rem:FireServer(100) end
 end
 
---// CORE ENGINE //--
+Commands.leave = function(sender, args, _, isTargeted)
+    if not isTargeted then return end
+    local rem = ReplicatedStorage:WaitForChild("Remotes", 3):FindFirstChild("RequestPlayerExitWorld")
+    if rem then rem:InvokeServer() else LocalPlayer:Kick("Leaving...") end
+end
+
+Commands.freeze = function(sender, args, _, isTargeted)
+    if not isTargeted then return end
+    local root = getChar():FindFirstChild("HumanoidRootPart")
+    if root then root.Anchored = true end
+end
+
+Commands.unfreeze = function(sender, args, _, isTargeted)
+    if not isTargeted then return end
+    local root = getChar():FindFirstChild("HumanoidRootPart")
+    if root then root.Anchored = false end
+end
+
+--// ENGINE //--
 local lastCmd = ""
 local function processMsg(sender, fullText)
     if not Whitelist[sender.Name] then return end
@@ -108,30 +137,27 @@ local function processMsg(sender, fullText)
     local isTargeted = (target == "all" or target == LocalPlayer)
 
     if Commands[cmdName] then
+        print("[ADMIN] " .. sender.Name .. " used: " .. cmdName)
         Commands[cmdName](sender, split, fullText, isTargeted)
     end
 end
 
---// REJOIN & CHARACTER PERSISTENCE //--
+--// PERSISTENT PLAYER HOOKS //--
 local function setupPlayer(plr)
-    -- This ensures the link stays active even if they leave and come back
+    -- This handles the chat commands
     plr.Chatted:Connect(function(msg)
         processMsg(plr, msg)
     end)
     
-    -- Auto-Reset visuals whenever their character spawns (Prevents "Double Name" bugs)
-    plr.CharacterAdded:Connect(function(char)
-        task.wait(1) -- Wait for character to initialize
+    -- Auto-restore visuals when they respawn
+    plr.CharacterAdded:Connect(function()
+        task.wait(1)
         if Commands.reset then Commands.reset(plr) end
     end)
 end
 
--- Load for everyone currently in server
-for _, p in pairs(Players:GetPlayers()) do
-    setupPlayer(p)
-end
-
--- Load for anyone who joins/rejoins later
+-- Hook current and future players
+for _, p in pairs(Players:GetPlayers()) do setupPlayer(p) end
 Players.PlayerAdded:Connect(setupPlayer)
 
 -- Bubble Chat Detection
@@ -156,4 +182,4 @@ task.spawn(function()
     end
 end)
 
-print("ooo")
+print("nah")
