@@ -1670,6 +1670,354 @@ end)
 
 --SPAMMER--
 
+--LOGS--
+
+-- Services
+local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
+local CoreGui = game:GetService("CoreGui")
+
+local LocalPlayer = Players.LocalPlayer
+
+-- Dependencies
+local ItemsManager = require(ReplicatedStorage:WaitForChild("Managers"):WaitForChild("ItemsManager"))
+local DropsFolder = workspace:WaitForChild("Drops")
+
+-- Asset Converter
+local function getAsset(id)
+    return "rbxthumb://type=Asset&id=" .. id .. "&w=150&h=150"
+end
+
+local ICON_PLAYER = getAsset("2795572803")
+local ICON_DROP = getAsset("99760400103324")
+local ICON_PICKUP = getAsset("90878429394186")
+local ICON_CLEAR = getAsset("8463436236")
+local ICON_AUTO = getAsset("12662723726")
+local ICON_SYSTEM = getAsset("1764960415")
+local ICON_SEARCH = getAsset("118685771787843")
+
+-- Settings
+local UI_SIZE = UDim2.new(0, 320, 0, 220) 
+local LOG_LIFESPAN = 12
+local AUTO_CLEAR = true 
+local ONLY_ME = false
+local CURRENT_SEARCH = ""
+local LOG_TEXT_SIZE = 8 -- Default starting size
+
+-- UI Setup
+local ScreenGui = Instance.new("ScreenGui", CoreGui)
+ScreenGui.Name = "CAW_V19"
+
+local MainFrame = Instance.new("Frame", ScreenGui)
+MainFrame.Size = UI_SIZE
+MainFrame.Position = UDim2.new(0, 10, 0.4, 0)
+MainFrame.BackgroundColor3 = Color3.fromRGB(5, 5, 5)
+MainFrame.BackgroundTransparency = 0.4
+MainFrame.BorderSizePixel = 0
+MainFrame.Active = true
+MainFrame.Draggable = true
+Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 3)
+
+-- Header
+local Title = Instance.new("TextLabel", MainFrame)
+Title.Size = UDim2.new(1, -150, 0, 24)
+Title.Position = UDim2.new(0, 8, 0, 0)
+Title.Text = "CAW CLIENT // V19"
+Title.TextColor3 = Color3.fromRGB(0, 255, 150)
+Title.Font = Enum.Font.Code
+Title.TextSize = 11
+Title.BackgroundTransparency = 1
+Title.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Text Size Controls (+ / -)
+local SizeUp = Instance.new("TextButton", MainFrame)
+SizeUp.Size = UDim2.new(0, 18, 0, 18)
+SizeUp.Position = UDim2.new(1, -125, 0, 3)
+SizeUp.Text = "▲"
+SizeUp.TextColor3 = Color3.new(1, 1, 1)
+SizeUp.BackgroundTransparency = 1
+SizeUp.Font = Enum.Font.Code
+SizeUp.TextSize = 10
+
+local SizeDown = Instance.new("TextButton", MainFrame)
+SizeDown.Size = UDim2.new(0, 18, 0, 18)
+SizeDown.Position = UDim2.new(1, -145, 0, 3)
+SizeDown.Text = "▼"
+SizeDown.TextColor3 = Color3.new(1, 1, 1)
+SizeDown.BackgroundTransparency = 1
+SizeDown.Font = Enum.Font.Code
+SizeDown.TextSize = 10
+
+-- Header Controls
+local AutoBtn = Instance.new("ImageButton", MainFrame)
+AutoBtn.Size = UDim2.new(0, 16, 0, 16)
+AutoBtn.Position = UDim2.new(1, -60, 0, 4)
+AutoBtn.Image = ICON_AUTO
+AutoBtn.BackgroundTransparency = 1
+AutoBtn.ImageColor3 = Color3.fromRGB(0, 200, 255)
+
+local ClearBtn = Instance.new("ImageButton", MainFrame)
+ClearBtn.Size = UDim2.new(0, 16, 0, 16)
+ClearBtn.Position = UDim2.new(1, -85, 0, 4)
+ClearBtn.Image = ICON_CLEAR
+ClearBtn.BackgroundTransparency = 1
+ClearBtn.ImageColor3 = Color3.fromRGB(200, 50, 50)
+
+local OnlyMeBtn = Instance.new("TextButton", MainFrame)
+OnlyMeBtn.Size = UDim2.new(0, 70, 0, 16)
+OnlyMeBtn.Position = UDim2.new(1, -215, 0, 4)
+OnlyMeBtn.BackgroundTransparency = 1
+OnlyMeBtn.Text = "MY LOGS: OFF"
+OnlyMeBtn.TextColor3 = Color3.new(1, 1, 1)
+OnlyMeBtn.Font = Enum.Font.Code
+OnlyMeBtn.TextSize = 9
+
+local MinBtn = Instance.new("TextButton", MainFrame)
+MinBtn.Size = UDim2.new(0, 24, 0, 24)
+MinBtn.Position = UDim2.new(1, -25, 0, 0)
+MinBtn.Text = "—"
+MinBtn.Font = Enum.Font.Code
+MinBtn.TextColor3 = Color3.new(1, 1, 1)
+MinBtn.BackgroundTransparency = 1
+
+-- Search Bar
+local SearchFrame = Instance.new("Frame", MainFrame)
+SearchFrame.Size = UDim2.new(1, -16, 0, 20)
+SearchFrame.Position = UDim2.new(0, 8, 0, 26)
+SearchFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+SearchFrame.BackgroundTransparency = 0.5
+Instance.new("UICorner", SearchFrame)
+
+local SearchIcon = Instance.new("ImageLabel", SearchFrame)
+SearchIcon.Size = UDim2.new(0, 14, 0, 14)
+SearchIcon.Position = UDim2.new(0, 4, 0.5, -7)
+SearchIcon.Image = ICON_SEARCH
+SearchIcon.BackgroundTransparency = 1
+
+local SearchInput = Instance.new("TextBox", SearchFrame)
+SearchInput.Size = UDim2.new(1, -22, 1, 0)
+SearchInput.Position = UDim2.new(0, 22, 0, 0)
+SearchInput.BackgroundTransparency = 1
+SearchInput.PlaceholderText = "SEARCH..."
+SearchInput.Text = ""
+SearchInput.TextColor3 = Color3.new(1, 1, 1)
+SearchInput.Font = Enum.Font.Code
+SearchInput.TextSize = 9
+SearchInput.TextXAlignment = Enum.TextXAlignment.Left
+
+-- Log Area
+local LogContainer = Instance.new("ScrollingFrame", MainFrame)
+LogContainer.Size = UDim2.new(1, -6, 1, -52)
+LogContainer.Position = UDim2.new(0, 3, 0, 48)
+LogContainer.BackgroundTransparency = 1
+LogContainer.ScrollBarThickness = 1
+LogContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
+LogContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
+
+local UIList = Instance.new("UIListLayout", LogContainer)
+UIList.SortOrder = Enum.SortOrder.LayoutOrder
+UIList.Padding = UDim.new(0, 2)
+
+-- Functions
+local function shakeUI(obj)
+    local origPos = obj.Position
+    for i = 1, 6 do
+        local xOffset = math.random(-2, 2)
+        local yOffset = math.random(-2, 2)
+        obj.Position = origPos + UDim2.new(0, xOffset, 0, yOffset)
+        task.wait(0.02)
+    end
+    obj.Position = origPos
+end
+
+local function updateAllLogSizes()
+    for _, log in ipairs(LogContainer:GetChildren()) do
+        if log:IsA("Frame") then
+            log.Size = UDim2.new(1, 0, 0, LOG_TEXT_SIZE + 8)
+            for _, txt in ipairs(log:GetChildren()) do
+                if txt:IsA("TextLabel") then
+                    txt.TextSize = LOG_TEXT_SIZE
+                end
+            end
+        end
+    end
+end
+
+-- Logic
+SizeUp.MouseButton1Click:Connect(function()
+    LOG_TEXT_SIZE = math.clamp(LOG_TEXT_SIZE + 1, 6, 16)
+    updateAllLogSizes()
+end)
+
+SizeDown.MouseButton1Click:Connect(function()
+    LOG_TEXT_SIZE = math.clamp(LOG_TEXT_SIZE - 1, 6, 16)
+    updateAllLogSizes()
+end)
+
+OnlyMeBtn.MouseButton1Click:Connect(function()
+    ONLY_ME = not ONLY_ME
+    OnlyMeBtn.Text = ONLY_ME and "MY LOGS: ON" or "MY LOGS: OFF"
+    OnlyMeBtn.TextColor3 = ONLY_ME and Color3.fromRGB(0, 255, 120) or Color3.new(1, 1, 1)
+end)
+
+AutoBtn.MouseButton1Click:Connect(function()
+    AUTO_CLEAR = not AUTO_CLEAR
+    TweenService:Create(AutoBtn, TweenInfo.new(0.4), {Rotation = AutoBtn.Rotation + 360}):Play()
+    AutoBtn.ImageColor3 = AUTO_CLEAR and Color3.fromRGB(0, 200, 255) or Color3.fromRGB(80, 80, 80)
+end)
+
+ClearBtn.MouseButton1Click:Connect(function()
+    shakeUI(ClearBtn)
+    for _, v in ipairs(LogContainer:GetChildren()) do if v:IsA("Frame") then v:Destroy() end end
+end)
+
+SearchInput:GetPropertyChangedSignal("Text"):Connect(function()
+    CURRENT_SEARCH = SearchInput.Text:lower()
+    for _, log in ipairs(LogContainer:GetChildren()) do
+        if log:IsA("Frame") then
+            local content = log:GetAttribute("SearchTag") or ""
+            log.Visible = content:find(CURRENT_SEARCH) ~= nil
+        end
+    end
+end)
+
+MinBtn.MouseButton1Click:Connect(function()
+    local IsMin = (MainFrame.Size.Y.Offset > 24)
+    MainFrame:TweenSize(IsMin and UDim2.new(0, 320, 0, 24) or UI_SIZE, "Out", "Quart", 0.2, true)
+    LogContainer.Visible = not IsMin
+    SearchFrame.Visible = not IsMin
+    OnlyMeBtn.Visible = not IsMin
+    SizeUp.Visible = not IsMin
+    SizeDown.Visible = not IsMin
+    MinBtn.Text = IsMin and "+" or "—"
+end)
+
+local function createLog(pName, status, actionIcon, itemText, isLocal, customPlayerIcon)
+    if ONLY_ME and not isLocal then return end
+
+    local logEntry = Instance.new("Frame", LogContainer)
+    logEntry.Size = UDim2.new(1, 0, 0, LOG_TEXT_SIZE + 8)
+    logEntry.BackgroundTransparency = 1
+    
+    local searchTag = (pName .. status .. itemText):lower()
+    logEntry:SetAttribute("SearchTag", searchTag)
+    logEntry.Visible = searchTag:find(CURRENT_SEARCH) ~= nil
+
+    local txtColor = isLocal and Color3.fromRGB(0, 255, 120) or Color3.new(1, 1, 1)
+
+    local aIcon = Instance.new("ImageLabel", logEntry)
+    aIcon.Size = UDim2.new(0, 14, 0, 14)
+    aIcon.Position = UDim2.new(0, 2, 0.5, -7)
+    aIcon.Image = actionIcon
+    aIcon.BackgroundTransparency = 1
+
+    local statusLbl = Instance.new("TextLabel", logEntry)
+    statusLbl.Size = UDim2.new(0, 50, 1, 0)
+    statusLbl.Position = UDim2.new(0, 20, 0, 0)
+    statusLbl.BackgroundTransparency = 1
+    statusLbl.Text = status:upper()
+    statusLbl.TextColor3 = txtColor
+    statusLbl.Font = Enum.Font.Code
+    statusLbl.TextSize = LOG_TEXT_SIZE
+    statusLbl.TextXAlignment = Enum.TextXAlignment.Left
+
+    local pIcon = Instance.new("ImageLabel", logEntry)
+    pIcon.Size = UDim2.new(0, 14, 0, 14)
+    pIcon.Position = UDim2.new(0, 75, 0.5, -7)
+    pIcon.Image = customPlayerIcon or ICON_PLAYER
+    pIcon.BackgroundTransparency = 1
+
+    local detailLbl = Instance.new("TextLabel", logEntry)
+    detailLbl.Name = "DetailLabel" -- Important for the animation loop
+    detailLbl.Size = UDim2.new(1, -95, 1, 0)
+    detailLbl.Position = UDim2.new(0, 95, 0, 0)
+    detailLbl.BackgroundTransparency = 1
+    detailLbl.Text = string.format("%s | %s", pName:upper(), itemText:upper())
+    detailLbl.TextColor3 = txtColor
+    detailLbl.Font = Enum.Font.Code
+    detailLbl.TextSize = LOG_TEXT_SIZE
+    detailLbl.TextXAlignment = Enum.TextXAlignment.Left
+
+    -- ONLY AUTO-CLEAR IF IT IS NOT THE SYSTEM LOG
+    if AUTO_CLEAR and pName ~= "SYSTEM" then
+        task.delay(LOG_LIFESPAN, function()
+            if logEntry.Parent then
+                local t = TweenService:Create(detailLbl, TweenInfo.new(1), {TextTransparency = 1})
+                TweenService:Create(statusLbl, TweenInfo.new(1), {TextTransparency = 1}):Play()
+                TweenService:Create(pIcon, TweenInfo.new(1), {ImageTransparency = 1}):Play()
+                TweenService:Create(aIcon, TweenInfo.new(1), {ImageTransparency = 1}):Play()
+                t:Play()
+                t.Completed:Connect(function() logEntry:Destroy() end)
+            end
+        end)
+    end
+    
+    return logEntry -- Return the frame so we can animate it
+end
+
+-- Detection
+local function handleItem(item)
+    if not item:IsA("Part") then return end
+    
+    local function info()
+        local id = item:GetAttribute("id")
+        return (id and ItemsManager.GetName(id)) or item.Name or "ITEM", item:GetAttribute("amount") or 1
+    end
+
+    task.spawn(function()
+        local name, amt = info()
+        local ownerName = "WORLD"
+        local isLocal = false
+        for _, p in ipairs(Players:GetPlayers()) do
+            if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
+                if (p.Character.HumanoidRootPart.Position - item.Position).Magnitude < 10 then
+                    ownerName = p.DisplayName
+                    isLocal = (p == LocalPlayer)
+                    break
+                end
+            end
+        end
+        createLog(ownerName, "DROPPED", ICON_DROP, name .. " x" .. amt, isLocal)
+    end)
+
+    item:GetAttributeChangedSignal("t"):Connect(function()
+        local t = item:GetAttribute("t")
+        if t then
+            local p = Players:GetPlayerByUserId(tonumber(t))
+            if p then
+                local name, amt = info()
+                createLog(p.DisplayName, "COLLECTED", ICON_PICKUP, name .. " x" .. amt, p == LocalPlayer)
+            end
+        end
+    end)
+end
+
+-- Initial Setup
+DropsFolder.ChildAdded:Connect(handleItem)
+
+local loadingLog = createLog("SYSTEM", "LOADED!", ICON_AUTO, "LOGS RUNNING", true, ICON_SYSTEM)
+
+if loadingLog then
+    task.spawn(function()
+        local label = loadingLog:WaitForChild("DetailLabel", 5)
+        local dots = 0
+        
+        -- This loop will now run forever (until you trash it)
+        while loadingLog and loadingLog.Parent and label do
+            dots = (dots + 1) % 4
+            local extension = string.rep(".", dots)
+            
+            -- Specifically update the "RUNNING" part of the text
+            label.Text = "SYSTEM | LOGS RUNNING" .. extension
+            
+            task.wait(0.5)
+        end
+    end)
+end
+
+--LOGS--
+
 print("CLIENT MOD MENU DOY!")
     end
 end)
