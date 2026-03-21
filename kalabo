@@ -158,7 +158,61 @@ OldNamecall = hookmetamethod(game, "__namecall", function(self, ...)
     return OldNamecall(self, ...)
 end)
 
--- [[ 2. ZOOM & FREECAM LOGIC - UPDATED ]]
+local MobileControls = {
+    Up = false,
+    Down = false,
+    Left = false,
+    Right = false
+}
+
+-- [[ 1. BUTTON BINDING LOGIC ]]
+local function BindMobileButtons()
+    local PlayerGui = Player:WaitForChild("PlayerGui")
+    local invUI = PlayerGui:WaitForChild("InventoryUI", 10)
+    
+    if not invUI then warn("Erik: InventoryUI not found!") return end
+
+    local function findBtn(name, parentName)
+        for _, v in pairs(invUI:GetDescendants()) do
+            if v:IsA("ImageButton") or v:IsA("TextButton") then
+                if v.Name == name then
+                    if parentName then
+                        if v.Parent and v.Parent.Name == parentName then
+                            return v
+                        end
+                    else
+                        return v
+                    end
+                end
+            end
+        end
+        return nil
+    end
+
+    local jumpBtn = findBtn("JumpButton")
+    local punchBtn = findBtn("PunchButton")
+    local moveLeft = findBtn("Button", "Left")
+    local moveRight = findBtn("Button", "Right")
+
+    local function setup(btn, key)
+        if btn then
+            btn.MouseButton1Down:Connect(function() MobileControls[key] = true end)
+            btn.MouseButton1Up:Connect(function() MobileControls[key] = false end)
+            btn.MouseLeave:Connect(function() MobileControls[key] = false end)
+        else
+            warn("Erik: Could not find " .. key .. " button in UI!")
+        end
+    end
+
+    setup(jumpBtn, "Up")
+    setup(punchBtn, "Down")
+    setup(moveLeft, "Left")
+    setup(moveRight, "Right")
+end
+
+task.spawn(BindMobileButtons)
+
+-- [[ 2. FREECAM ANCHOR SETUP ]]
 local FreecamPart = Instance.new("Part")
 FreecamPart.Transparency = 1
 FreecamPart.CanCollide = false
@@ -166,42 +220,68 @@ FreecamPart.Anchored = true
 FreecamPart.Parent = workspace
 FreecamPart.Name = "FreecamAnchor"
 
+-- [[ 3. MAIN RENDER LOOP ]]
 RunService.RenderStepped:Connect(function()
-    -- Max Zoom Toggle
+    -- Zoom Logic
     if Settings.MaxZoom then
         Player.CameraMaxZoomDistance = 100000
     else
         Player.CameraMaxZoomDistance = 128 
     end
     
-    -- Freecam Execution
     if Settings.Freecam then
         local moveVec = Vector3.new(0, 0, 0)
         
-        -- Vertical Movement (Up/Down)
-        if UserInputService:IsKeyDown(Enum.KeyCode.W) then moveVec = moveVec + Vector3.new(0, 1, 0) end
-        if UserInputService:IsKeyDown(Enum.KeyCode.S) then moveVec = moveVec + Vector3.new(0, -1, 0) end
-        
-        -- Horizontal Movement (Left/Right)
-        -- Note: If your game uses the Z-axis for horizontal movement, change X to Z below.
-        if UserInputService:IsKeyDown(Enum.KeyCode.A) then moveVec = moveVec + Vector3.new(-1, 0, 0) end
-        if UserInputService:IsKeyDown(Enum.KeyCode.D) then moveVec = moveVec + Vector3.new(1, 0, 0) end
-        
-        -- Apply movement based on speed setting
-        if moveVec.Magnitude > 0 then
-            FreecamPart.Position = FreecamPart.Position + (moveVec.Unit * Settings.FreecamSpeed)
+        -- 1. Determine Speed (Hold Shift on PC to go faster)
+        local currentSpeed = Settings.FreecamSpeed
+
+        -- 2. Vertical Movement (World Space)
+        if UserInputService:IsKeyDown(Enum.KeyCode.W) or MobileControls.Up then 
+            moveVec = moveVec + Vector3.new(0, 1, 0) 
+        end
+        if UserInputService:IsKeyDown(Enum.KeyCode.S) or MobileControls.Down then 
+            moveVec = moveVec + Vector3.new(0, -1, 0) 
         end
         
+        -- 3. Horizontal Movement (Camera Relative)
+        local sideVec = Vector3.new(0, 0, 0)
+        
+        -- PC Keyboard (A/D)
+        if UserInputService:IsKeyDown(Enum.KeyCode.A) then sideVec = sideVec + Vector3.new(-1, 0, 0) end
+        if UserInputService:IsKeyDown(Enum.KeyCode.D) then sideVec = sideVec + Vector3.new(1, 0, 0) end
+        
+        -- Mobile Buttons
+        if MobileControls.Left then sideVec = sideVec + Vector3.new(1, 0, 0) end
+        if MobileControls.Right then sideVec = sideVec + Vector3.new(-1, 0, 0) end
+        
+        -- 4. Apply Vector Math
+        local finalMove = Vector3.new(0, moveVec.Y, 0) -- Vertical
+        
+        if sideVec.Magnitude > 0 then
+            -- Multiply by RightVector so "Left/Right" is relative to your SCREEN
+            finalMove = finalMove + (Camera.CFrame.RightVector * sideVec.X)
+        end
+
+        -- 5. Final Movement Update
+        if finalMove.Magnitude > 0 then
+            FreecamPart.Position = FreecamPart.Position + (finalMove.Unit * currentSpeed)
+        end
+        
+        -- CRITICAL: Ensure Camera focuses on the FreecamPart
         Camera.CameraSubject = FreecamPart
+        
     else
-        -- Reset Camera to Player
+        -- Character Sync Logic
         local Character = Player.Character or workspace:FindFirstChild(Player.Name)
         if Character then
-            Camera.CameraSubject = Character:FindFirstChild("Humanoid") or Character
+            local humanoid = Character:FindFirstChild("Humanoid")
+            local rootPart = Character:FindFirstChild("HumanoidRootPart")
             
-            -- Sync FreecamPart to Player so it starts from the player's position when toggled ON
-            if Character:FindFirstChild("HumanoidRootPart") then
-                FreecamPart.Position = Character.HumanoidRootPart.Position
+            Camera.CameraSubject = humanoid or Character
+            
+            -- Keep FreecamPart locked to Character when NOT in freecam
+            if rootPart then
+                FreecamPart.Position = rootPart.Position
             end
         end
     end
@@ -245,31 +325,28 @@ RunService.Heartbeat:Connect(function()
         end
     end
 
-    -- [[ FLY MODE LOGIC ]]
-    if Settings.FlyMode then
-        local isHoldingJump = UserInputService:IsKeyDown(Enum.KeyCode.Space)
+if Settings.FlyMode then
+        -- Checks Spacebar OR Mobile JumpButton
+        local isHoldingJump = UserInputService:IsKeyDown(Enum.KeyCode.Space) or MobileControls.Up
         
         if isHoldingJump then
             -- ASCEND
             PlayerMovement.Sensor = false 
             PlayerMovement.VelocityY = Settings.FlySpeed
-            -- Boost lift
             if not PlayerMovement.Grounded then
                 PlayerMovement.VelocityY = PlayerMovement.VelocityY + 0.38
             end
         else
-            -- FALL: Only re-enable sensor if God V2 is also OFF
+            -- FALL / RELEASE
             if not Settings.GodModeV2 then
                 PlayerMovement.Sensor = true 
             end
             
-            -- THE FIX: Ensure VelocityY isn't stuck upward
             if not PlayerMovement.Grounded and PlayerMovement.VelocityY > 0 then
                 PlayerMovement.VelocityY = 0 
             end
         end
     else
-        -- Reset Sensor when Fly is OFF, provided God V2 is also OFF
         if not Settings.GodModeV2 then
             PlayerMovement.Sensor = true
         end
