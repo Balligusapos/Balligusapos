@@ -1730,24 +1730,23 @@ Title.TextSize = 11
 Title.BackgroundTransparency = 1
 Title.TextXAlignment = Enum.TextXAlignment.Left
 
--- Text Size Controls (+ / -)
 local SizeUp = Instance.new("TextButton", MainFrame)
 SizeUp.Size = UDim2.new(0, 18, 0, 18)
 SizeUp.Position = UDim2.new(1, -125, 0, 3)
-SizeUp.Text = "▲"
+SizeUp.Text = "+" -- Changed from ▲
 SizeUp.TextColor3 = Color3.new(1, 1, 1)
 SizeUp.BackgroundTransparency = 1
 SizeUp.Font = Enum.Font.Code
-SizeUp.TextSize = 10
+SizeUp.TextSize = 14 -- Slightly larger for better visibility
 
 local SizeDown = Instance.new("TextButton", MainFrame)
 SizeDown.Size = UDim2.new(0, 18, 0, 18)
 SizeDown.Position = UDim2.new(1, -145, 0, 3)
-SizeDown.Text = "▼"
+SizeDown.Text = "-" -- Changed from ▼
 SizeDown.TextColor3 = Color3.new(1, 1, 1)
 SizeDown.BackgroundTransparency = 1
 SizeDown.Font = Enum.Font.Code
-SizeDown.TextSize = 10
+SizeDown.TextSize = 14
 
 -- Header Controls
 local AutoBtn = Instance.new("ImageButton", MainFrame)
@@ -1859,6 +1858,20 @@ OnlyMeBtn.MouseButton1Click:Connect(function()
     ONLY_ME = not ONLY_ME
     OnlyMeBtn.Text = ONLY_ME and "MY LOGS: ON" or "MY LOGS: OFF"
     OnlyMeBtn.TextColor3 = ONLY_ME and Color3.fromRGB(0, 255, 120) or Color3.new(1, 1, 1)
+    
+    -- Hide/Show existing logs based on the new setting
+    for _, log in ipairs(LogContainer:GetChildren()) do
+        if log:IsA("Frame") and log:GetAttribute("SearchTag") then
+            local isLocalLog = log:GetAttribute("IsLocal")
+            if ONLY_ME then
+                log.Visible = isLocalLog == true
+            else
+                -- If turning off filter, respect the Search Bar state
+                local searchMatch = log:GetAttribute("SearchTag"):find(CURRENT_SEARCH) ~= nil
+                log.Visible = searchMatch
+            end
+        end
+    end
 end)
 
 AutoBtn.MouseButton1Click:Connect(function()
@@ -1894,14 +1907,20 @@ MinBtn.MouseButton1Click:Connect(function()
 end)
 
 local function createLog(pName, status, actionIcon, itemText, isLocal, customPlayerIcon)
-    if ONLY_ME and not isLocal then return end
+    -- If "My Logs" is ON, and this isn't my log, don't create it
+    if ONLY_ME and not isLocal then return nil end
 
     local logEntry = Instance.new("Frame", LogContainer)
     logEntry.Size = UDim2.new(1, 0, 0, LOG_TEXT_SIZE + 8)
     logEntry.BackgroundTransparency = 1
     
+    -- Tag it so we can identify local logs later if needed
+    logEntry:SetAttribute("IsLocal", isLocal)
+    
     local searchTag = (pName .. status .. itemText):lower()
     logEntry:SetAttribute("SearchTag", searchTag)
+    
+    -- Visibility logic: Match Search AND match "My Logs" filter
     logEntry.Visible = searchTag:find(CURRENT_SEARCH) ~= nil
 
     local txtColor = isLocal and Color3.fromRGB(0, 255, 120) or Color3.new(1, 1, 1)
@@ -1929,7 +1948,7 @@ local function createLog(pName, status, actionIcon, itemText, isLocal, customPla
     pIcon.BackgroundTransparency = 1
 
     local detailLbl = Instance.new("TextLabel", logEntry)
-    detailLbl.Name = "DetailLabel" -- Important for the animation loop
+    detailLbl.Name = "DetailLabel"
     detailLbl.Size = UDim2.new(1, -95, 1, 0)
     detailLbl.Position = UDim2.new(0, 95, 0, 0)
     detailLbl.BackgroundTransparency = 1
@@ -1939,26 +1958,25 @@ local function createLog(pName, status, actionIcon, itemText, isLocal, customPla
     detailLbl.TextSize = LOG_TEXT_SIZE
     detailLbl.TextXAlignment = Enum.TextXAlignment.Left
 
-    -- ONLY AUTO-CLEAR IF IT IS NOT THE SYSTEM LOG
     if AUTO_CLEAR and pName ~= "SYSTEM" then
         task.delay(LOG_LIFESPAN, function()
-            if logEntry.Parent then
+            if logEntry and logEntry.Parent then
                 local t = TweenService:Create(detailLbl, TweenInfo.new(1), {TextTransparency = 1})
                 TweenService:Create(statusLbl, TweenInfo.new(1), {TextTransparency = 1}):Play()
                 TweenService:Create(pIcon, TweenInfo.new(1), {ImageTransparency = 1}):Play()
                 TweenService:Create(aIcon, TweenInfo.new(1), {ImageTransparency = 1}):Play()
                 t:Play()
-                t.Completed:Connect(function() logEntry:Destroy() end)
+                t.Completed:Connect(function() if logEntry.Parent then logEntry:Destroy() end end)
             end
         end)
     end
     
-    return logEntry -- Return the frame so we can animate it
+    return logEntry
 end
 
 -- Detection
 local function handleItem(item)
-    if not item:IsA("Part") then return end
+    if not item:IsA("BasePart") then return end
     
     local function info()
         local id = item:GetAttribute("id")
@@ -1966,15 +1984,21 @@ local function handleItem(item)
     end
 
     task.spawn(function()
+        -- Wait briefly for attributes/position to replicate fully
+        task.wait(0.1) 
+        
         local name, amt = info()
         local ownerName = "WORLD"
         local isLocal = false
+        local closestDist = 15 -- Max distance to consider a "drop"
+
         for _, p in ipairs(Players:GetPlayers()) do
             if p.Character and p.Character:FindFirstChild("HumanoidRootPart") then
-                if (p.Character.HumanoidRootPart.Position - item.Position).Magnitude < 10 then
+                local dist = (p.Character.HumanoidRootPart.Position - item.Position).Magnitude
+                if dist < closestDist then
+                    closestDist = dist
                     ownerName = p.DisplayName
                     isLocal = (p == LocalPlayer)
-                    break
                 end
             end
         end
