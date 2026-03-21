@@ -21,8 +21,6 @@ UIManager.BuildAndShowUIPrompt({
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local PlayerGui = Player:WaitForChild("PlayerGui")
-local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local UserInputService = game:GetService("UserInputService")
 local Player = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
@@ -55,6 +53,9 @@ local Settings = {
     FlySpeed = 1.6,
     FreecamSpeed = 1.2
 }
+
+local PlayerGui = Player:WaitForChild("PlayerGui")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- [[ 3. FIXED AUTO-PULL LISTENER ]]
 PlayerGui.ChildAdded:Connect(function(child)
