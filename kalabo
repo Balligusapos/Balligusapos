@@ -22,6 +22,8 @@ UIManager.BuildAndShowUIPrompt({
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local UserInputService = game:GetService("UserInputService")
+local PlayerGui = Player:WaitForChild("PlayerGui")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Player = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
@@ -35,7 +37,7 @@ local Settings = {
     InfJump = false,
     FlyMode = false,
     Freecam = false,
-    MaxZoom = false,
+    MaxZoom = true,
     Magnet = false, 
     NoAnim = false,
     AntiCollect = false,
@@ -44,6 +46,7 @@ local Settings = {
     AutoLeave = false,
     AutoWarn = false,
     SkinChanger = false,
+    AutoPull = false,
     SkinIndex = 1,
     Skins = {"785c51", "977263", "b38b79", "c49582", "e1ab97", "ffc4aa", "feceb3", "ffddb7", "ffe6c8"},
     SpeedMultiplier = 0.4, -- The default value you requested
@@ -52,6 +55,65 @@ local Settings = {
     FlySpeed = 1.6,
     FreecamSpeed = 1.2
 }
+
+-- [[ 2. FIXED CLEAN ENVIRONMENT ]]
+local function CleanEnvironment()
+    pcall(function()
+        -- Look for the specific "UIHidder" script the game uses to lock your screen
+        local hidder = PlayerGui:FindFirstChild("UIHidder", true)
+        if hidder then
+            hidder.Disabled = true
+            hidder:Destroy()
+        end
+        
+        -- Re-enable your movement controls if they were locked by the prompt
+        if PlayerMovement then 
+            PlayerMovement.InputActive = true 
+        end
+    end)
+end
+
+-- [[ 3. FIXED AUTO-PULL LISTENER ]]
+PlayerGui.ChildAdded:Connect(function(child)
+    -- Check if it's the specific prompt UI and if AutoPull is enabled
+    if Settings.AutoPull and child.Name == "UIPromptUI" then
+        task.defer(function()
+            local isTargetUI = false
+            
+            -- Scan for keywords to ensure we don't auto-pull harmless UIs
+            for _, v in pairs(child:GetDescendants()) do
+                if v:IsA("TextLabel") or v:IsA("TextButton") then
+                    local txt = v.Text:lower()
+                    if txt:find("pull") or txt:find("ban") or txt:find("kick") then
+                        isTargetUI = true
+                        break
+                    end
+                end
+            end
+
+            if isTargetUI then
+                -- 1. Hide it immediately so you can keep playing
+                child.Enabled = false 
+                
+                -- 2. Locate the specific RemoteEvent for the UI
+                local managers = ReplicatedStorage:WaitForChild("Managers", 5)
+                if managers then
+                    local uiManager = managers:WaitForChild("UIManager", 5)
+                    local event = uiManager and uiManager:WaitForChild("UIPromptEvent", 5)
+                    
+                    if event then
+                        -- 3. Send the bypass packet
+                        event:FireServer({["ButtonAction"] = "pull", ["Inputs"] = {}})
+                    end
+                end
+                
+                -- 4. Cleanup the UI and the environment
+                child:Destroy()
+                task.delay(0.1, CleanEnvironment)
+            end
+        end)
+    end
+end)
 
 -- [[ NEW: SKIN CHANGER HEARTBEAT LOOP ]]
 RunService.Heartbeat:Connect(function()
@@ -573,6 +635,7 @@ CreateToggle("ANTI-KNOCKBACK", "AntiKnockback")
 CreateToggle("AUTO-LEAVE", "AutoLeave")
 CreateToggle("AUTO-WARN", "AutoWarn")
 CreateToggle("SKIN-CHANGER", "SkinChanger")
+CreateToggle("INSTANT-PULL", "AutoPull")
 
 -- [[ 5. PRECISION IMAGE CROSSHAIR & TELEPORT ]]
 local CrossGui = Instance.new("ScreenGui", Player.PlayerGui)
