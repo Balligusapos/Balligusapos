@@ -1433,12 +1433,32 @@ SilentBtn.MouseButton1Click:Connect(function()
     SilentBtn.TextColor3 = SilentMode and Color3.fromRGB(255, 100, 100) or Color3.fromRGB(100, 255, 100)
 end)
 
+-- [[ REFINED SILENT MODE ]] --
 game:GetService("Players").LocalPlayer.PlayerGui.ChildAdded:Connect(function(child)
     if SilentMode and child.Name == "UIPromptUI" then
+        -- We use task.defer to give the UI a frame to load its internal text labels
         task.defer(function()
-            child:Destroy()
-            local moveScript = LocalPlayer.PlayerScripts:FindFirstChild("PlayerMovement", true)
-            if moveScript then pcall(function() require(moveScript).InputActive = true end) end
+            local isDropUI = false
+            
+            -- Look for any TextLabel that says "Drop"
+            for _, v in pairs(child:GetDescendants()) do
+                if v:IsA("TextLabel") and string.find(v.Text:lower(), "drop") then
+                    isDropUI = true
+                    break
+                end
+            end
+
+            -- Only destroy it if it's confirmed to be a Drop prompt
+            if isDropUI then
+                child.Enabled = false -- Hide it immediately
+                child:Destroy()
+                
+                -- Re-enable movement so the player isn't stuck
+                local moveScript = LocalPlayer.PlayerScripts:FindFirstChild("PlayerMovement", true)
+                if moveScript then 
+                    pcall(function() require(moveScript).InputActive = true end) 
+                end
+            end
         end)
     end
 end)
