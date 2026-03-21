@@ -1833,25 +1833,37 @@ end
 local function updateAllLogSizes()
     for _, log in ipairs(LogContainer:GetChildren()) do
         if log:IsA("Frame") then
+            -- Adjust frame height based on text size
             log.Size = UDim2.new(1, 0, 0, LOG_TEXT_SIZE + 8)
-            for _, txt in ipairs(log:GetChildren()) do
-                if txt:IsA("TextLabel") then
-                    txt.TextSize = LOG_TEXT_SIZE
+            
+            -- Update every text element inside the log
+            for _, child in ipairs(log:GetChildren()) do
+                if child:IsA("TextLabel") then
+                    if child.Name == "TimeLabel" then
+                        child.TextSize = LOG_TEXT_SIZE - 1 -- Keep timer slightly smaller
+                    else
+                        child.TextSize = LOG_TEXT_SIZE
+                    end
                 end
             end
         end
     end
 end
 
--- Logic
 SizeUp.MouseButton1Click:Connect(function()
-    LOG_TEXT_SIZE = math.clamp(LOG_TEXT_SIZE + 1, 6, 16)
-    updateAllLogSizes()
+    if LOG_TEXT_SIZE < 16 then
+        LOG_TEXT_SIZE = LOG_TEXT_SIZE + 1
+        updateAllLogSizes()
+        Title.TextSize = 12 -- Brief visual pop
+        task.delay(0.1, function() Title.TextSize = 11 end)
+    end
 end)
 
 SizeDown.MouseButton1Click:Connect(function()
-    LOG_TEXT_SIZE = math.clamp(LOG_TEXT_SIZE - 1, 6, 16)
-    updateAllLogSizes()
+    if LOG_TEXT_SIZE > 6 then
+        LOG_TEXT_SIZE = LOG_TEXT_SIZE - 1
+        updateAllLogSizes()
+    end
 end)
 
 OnlyMeBtn.MouseButton1Click:Connect(function()
@@ -1907,24 +1919,22 @@ MinBtn.MouseButton1Click:Connect(function()
 end)
 
 local function createLog(pName, status, actionIcon, itemText, isLocal, customPlayerIcon)
-    -- If "My Logs" is ON, and this isn't my log, don't create it
     if ONLY_ME and not isLocal then return nil end
 
     local logEntry = Instance.new("Frame", LogContainer)
     logEntry.Size = UDim2.new(1, 0, 0, LOG_TEXT_SIZE + 8)
     logEntry.BackgroundTransparency = 1
     
-    -- Tag it so we can identify local logs later if needed
+    local createdAt = tick() -- Capture the exact spawn time
     logEntry:SetAttribute("IsLocal", isLocal)
     
     local searchTag = (pName .. status .. itemText):lower()
     logEntry:SetAttribute("SearchTag", searchTag)
-    
-    -- Visibility logic: Match Search AND match "My Logs" filter
     logEntry.Visible = searchTag:find(CURRENT_SEARCH) ~= nil
 
     local txtColor = isLocal and Color3.fromRGB(0, 255, 120) or Color3.new(1, 1, 1)
 
+    -- Icons and Status (keeping your existing logic)
     local aIcon = Instance.new("ImageLabel", logEntry)
     aIcon.Size = UDim2.new(0, 14, 0, 14)
     aIcon.Position = UDim2.new(0, 2, 0.5, -7)
@@ -1947,9 +1957,10 @@ local function createLog(pName, status, actionIcon, itemText, isLocal, customPla
     pIcon.Image = customPlayerIcon or ICON_PLAYER
     pIcon.BackgroundTransparency = 1
 
+    -- Adjusted Detail Label Size (Width reduced from -95 to -145 to fit timer)
     local detailLbl = Instance.new("TextLabel", logEntry)
     detailLbl.Name = "DetailLabel"
-    detailLbl.Size = UDim2.new(1, -95, 1, 0)
+    detailLbl.Size = UDim2.new(1, -145, 1, 0)
     detailLbl.Position = UDim2.new(0, 95, 0, 0)
     detailLbl.BackgroundTransparency = 1
     detailLbl.Text = string.format("%s | %s", pName:upper(), itemText:upper())
@@ -1958,15 +1969,48 @@ local function createLog(pName, status, actionIcon, itemText, isLocal, customPla
     detailLbl.TextSize = LOG_TEXT_SIZE
     detailLbl.TextXAlignment = Enum.TextXAlignment.Left
 
-    if AUTO_CLEAR and pName ~= "SYSTEM" then
-        task.delay(LOG_LIFESPAN, function()
-            if logEntry and logEntry.Parent then
-                local t = TweenService:Create(detailLbl, TweenInfo.new(1), {TextTransparency = 1})
-                TweenService:Create(statusLbl, TweenInfo.new(1), {TextTransparency = 1}):Play()
-                TweenService:Create(pIcon, TweenInfo.new(1), {ImageTransparency = 1}):Play()
-                TweenService:Create(aIcon, TweenInfo.new(1), {ImageTransparency = 1}):Play()
-                t:Play()
-                t.Completed:Connect(function() if logEntry.Parent then logEntry:Destroy() end end)
+ local timerLbl = Instance.new("TextLabel", logEntry)
+    timerLbl.Name = "TimeLabel" -- <--- ADD THIS LINE
+    timerLbl.Size = UDim2.new(0, 45, 1, 0)
+    timerLbl.Position = UDim2.new(1, -48, 0, 0)
+    timerLbl.BackgroundTransparency = 1
+    timerLbl.Text = "now"
+    timerLbl.TextColor3 = Color3.fromRGB(150, 150, 150)
+    timerLbl.Font = Enum.Font.Code
+    timerLbl.TextSize = LOG_TEXT_SIZE - 1
+    timerLbl.TextXAlignment = Enum.TextXAlignment.Right
+
+    -- Live Time Update Loop
+    task.spawn(function()
+        while logEntry and logEntry.Parent do
+            local diff = math.floor(tick() - createdAt)
+            if diff < 60 then
+                timerLbl.Text = diff .. "s ago"
+            else
+                timerLbl.Text = math.floor(diff/60) .. "m ago"
+            end
+            task.wait(1)
+        end
+    end)
+
+    -- Persistent Auto-Clear Logic
+    if pName ~= "SYSTEM" then
+        task.spawn(function()
+            while logEntry and logEntry.Parent do
+                task.wait(1)
+                -- Only proceed with clearing if AUTO_CLEAR is true AND time is up
+                if AUTO_CLEAR and (tick() - createdAt) >= LOG_LIFESPAN then
+                    local t = TweenService:Create(detailLbl, TweenInfo.new(1), {TextTransparency = 1})
+                    TweenService:Create(statusLbl, TweenInfo.new(1), {TextTransparency = 1}):Play()
+                    TweenService:Create(pIcon, TweenInfo.new(1), {ImageTransparency = 1}):Play()
+                    TweenService:Create(aIcon, TweenInfo.new(1), {ImageTransparency = 1}):Play()
+                    TweenService:Create(timerLbl, TweenInfo.new(1), {TextTransparency = 1}):Play()
+                    t:Play()
+                    t.Completed:Connect(function() 
+                        if logEntry.Parent then logEntry:Destroy() end 
+                    end)
+                    break -- Exit loop after starting destruction
+                end
             end
         end)
     end
