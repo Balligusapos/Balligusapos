@@ -43,12 +43,32 @@ local Settings = {
     AntiKnockback = false,
     AutoLeave = false,
     AutoWarn = false,
+    SkinChanger = false,
+    SkinIndex = 1,
+    Skins = {"785c51", "977263", "b38b79", "c49582", "e1ab97", "ffc4aa", "feceb3", "ffddb7", "ffe6c8"},
     SpeedMultiplier = 0.4, -- The default value you requested
     PingFake = false,
     PingBuffer = {},
     FlySpeed = 1.6,
     FreecamSpeed = 1.2
 }
+
+-- [[ NEW: SKIN CHANGER HEARTBEAT LOOP ]]
+RunService.Heartbeat:Connect(function()
+    if Settings.SkinChanger then
+        local remote = game:GetService("ReplicatedStorage").Remotes:FindFirstChild("CustomFunctionRemote")
+        if remote then
+            -- Rapidly cycling through hex colors
+            local hex = Settings.Skins[Settings.SkinIndex]
+            remote:FireServer("ChangeColor", hex)
+            
+            Settings.SkinIndex = Settings.SkinIndex + 1
+            if Settings.SkinIndex > #Settings.Skins then
+                Settings.SkinIndex = 1
+            end
+        end
+    end
+end)
 
 local function sendAutoWarn()
     local phrases = {
@@ -475,6 +495,7 @@ CreateToggle("SPEED-HACK", "SpeedHack")
 CreateToggle("ANTI-KNOCKBACK", "AntiKnockback")
 CreateToggle("AUTO-LEAVE", "AutoLeave")
 CreateToggle("AUTO-WARN", "AutoWarn")
+CreateToggle("SKIN-CHANGER", "SkinChanger")
 
 -- [[ 5. PRECISION IMAGE CROSSHAIR & TELEPORT ]]
 local CrossGui = Instance.new("ScreenGui", Player.PlayerGui)
