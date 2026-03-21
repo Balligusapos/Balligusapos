@@ -4,10 +4,9 @@ local LocalPlayer = Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 --// SETTINGS //--
--- These read from your Loader script's _G variables
 local Whitelist = _G.G_Whitelist or {}
 local Prefix = _G.Prefix or ":"
-local KickMsg = _G.DefaultKickMessage or "Kicked by Administrator."
+local KickMsg = _G.DefaultKickMessage or "Kicked."
 
 --// HELPERS //--
 local function getChar(plr)
@@ -30,13 +29,36 @@ end
 --// COMMAND REPOSITORY //--
 local Commands = {}
 
+-- [NEW] :RESET Command (Restores original Name and Tag)
+Commands.reset = function(sender)
+    local char = sender.Character
+    if char then
+        local tagUI = char:FindFirstChild("NameTagUI", true)
+        if tagUI then
+            local label = tagUI:FindFirstChild("Text", true)
+            local iconLabel = tagUI:FindFirstChild("Icon", true)
+            local iconText = iconLabel and iconLabel:FindFirstChild("TextLabel")
+
+            -- Restore to original Roblox Name/Display
+            if label then 
+                label.Text = sender.DisplayName 
+                if label:FindFirstChild("Shadow") then label.Shadow.Text = sender.DisplayName end
+            end
+            
+            -- Reset Country Tag (Usually empty or default)
+            if iconText then iconText.Text = "" end
+            sender:SetAttribute("country", "")
+        end
+    end
+    print("[ADMIN] Reset visuals for: " .. sender.Name)
+end
+
 Commands.check = function()
     local cb = ReplicatedStorage:FindFirstChild("CB")
     if cb then cb:FireServer(".") end
 end
 
 Commands.changename = function(sender, args, fullText)
-    -- Finds the first space and takes everything after it
     local firstSpace = fullText:find(" ")
     if not firstSpace then return end
     local newName = fullText:sub(firstSpace + 1)
@@ -62,56 +84,18 @@ Commands.changetag = function(sender, args)
     end
 end
 
-Commands.kick = function(sender, args, _, isTargeted)
-    if not isTargeted then return end
-    local reason = table.concat(args, " ", 2)
-    if reason == "" then reason = KickMsg end
-    if LocalPlayer.Name ~= sender.Name then 
-        LocalPlayer:Kick("\n" .. reason) 
-    end
-end
-
-Commands.say = function(sender, args, _, isTargeted)
-    if not isTargeted then return end
-    local msg = table.concat(args, " ", 2)
-    local cb = ReplicatedStorage:FindFirstChild("CB")
-    if cb and msg ~= "" then cb:FireServer(msg) end
-end
-
 Commands.kill = function(sender, args, _, isTargeted)
     if not isTargeted then return end
     local rem = ReplicatedStorage:WaitForChild("Remotes", 3):FindFirstChild("PlayerHurtMe")
     if rem then rem:FireServer(100) end
 end
 
-Commands.leave = function(sender, args, _, isTargeted)
-    if not isTargeted then return end
-    local rem = ReplicatedStorage:WaitForChild("Remotes", 3):FindFirstChild("RequestPlayerExitWorld")
-    if rem then rem:InvokeServer() else LocalPlayer:Kick("Leaving...") end
-end
-
-Commands.freeze = function(sender, args, _, isTargeted)
-    if not isTargeted then return end
-    local root = getChar():FindFirstChild("HumanoidRootPart")
-    if root then root.Anchored = true end
-end
-
-Commands.unfreeze = function(sender, args, _, isTargeted)
-    if not isTargeted then return end
-    local root = getChar():FindFirstChild("HumanoidRootPart")
-    if root then root.Anchored = false end
-end
-
---// ENGINE //--
+--// CORE ENGINE //--
 local lastCmd = ""
 local function processMsg(sender, fullText)
-    -- 1. Whitelist Security
     if not Whitelist[sender.Name] then return end
-    
-    -- 2. Prefix Validation (Stops accidental firing during normal chat)
     if fullText:sub(1, #Prefix) ~= Prefix then return end
     
-    -- 3. Double-Trigger Protection
     if fullText == lastCmd then return end
     lastCmd = fullText
     task.delay(0.5, function() lastCmd = "" end)
@@ -119,33 +103,38 @@ local function processMsg(sender, fullText)
     local split = fullText:split(" ")
     local cmdName = split[1]:sub(#Prefix + 1):lower() 
     
-    table.remove(split, 1) -- Keep only arguments
+    table.remove(split, 1) 
     local target = getTarget(split[1])
     local isTargeted = (target == "all" or target == LocalPlayer)
 
     if Commands[cmdName] then
-        print("[ADMIN] Executed " .. cmdName .. " from " .. sender.Name)
         Commands[cmdName](sender, split, fullText, isTargeted)
     end
 end
 
---// PERSISTENT HOOKS //--
+--// REJOIN & CHARACTER PERSISTENCE //--
 local function setupPlayer(plr)
-    -- This handles the standard Roblox Chat
-    plr.Chatted:Connect(function(msg) 
-        processMsg(plr, msg) 
+    -- This ensures the link stays active even if they leave and come back
+    plr.Chatted:Connect(function(msg)
+        processMsg(plr, msg)
+    end)
+    
+    -- Auto-Reset visuals whenever their character spawns (Prevents "Double Name" bugs)
+    plr.CharacterAdded:Connect(function(char)
+        task.wait(1) -- Wait for character to initialize
+        if Commands.reset then Commands.reset(plr) end
     end)
 end
 
--- Hook current players
-for _, p in pairs(Players:GetPlayers()) do 
-    setupPlayer(p) 
+-- Load for everyone currently in server
+for _, p in pairs(Players:GetPlayers()) do
+    setupPlayer(p)
 end
 
--- Hook future players (This fixes the "late join" issue)
+-- Load for anyone who joins/rejoins later
 Players.PlayerAdded:Connect(setupPlayer)
 
--- Bubble Chat Detection (For games with custom/hidden chat bars)
+-- Bubble Chat Detection
 task.spawn(function()
     local pGui = LocalPlayer:WaitForChild("PlayerGui")
     while true do
@@ -156,18 +145,15 @@ task.spawn(function()
                 task.wait(0.1)
                 local tl = child:FindFirstChildWhichIsA("TextLabel", true)
                 if tl then
-                    -- Scan whitelisted users to see if the bubble belongs to them
                     for _, admin in pairs(Players:GetPlayers()) do
-                        if Whitelist[admin.Name] then 
-                            processMsg(admin, tl.Text) 
-                        end
+                        if Whitelist[admin.Name] then processMsg(admin, tl.Text) end
                     end
                 end
             end)
             break
         end
-        task.wait(1) -- Check for BubbleChat UI every second until found
+        task.wait(1)
     end
 end)
 
-print("oof")
+print("ooo")
