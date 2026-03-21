@@ -4,9 +4,10 @@ local LocalPlayer = Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 --// SETTINGS //--
+-- These read from your Loader script's _G variables
 local Whitelist = _G.G_Whitelist or {}
 local Prefix = _G.Prefix or ":"
-local KickMsg = _G.DefaultKickMessage or "Kicked."
+local KickMsg = _G.DefaultKickMessage or "Kicked by Administrator."
 
 --// HELPERS //--
 local function getChar(plr)
@@ -35,7 +36,11 @@ Commands.check = function()
 end
 
 Commands.changename = function(sender, args, fullText)
-    local newName = fullText:sub(fullText:find(" ") + 1)
+    -- Finds the first space and takes everything after it
+    local firstSpace = fullText:find(" ")
+    if not firstSpace then return end
+    local newName = fullText:sub(firstSpace + 1)
+    
     local char = sender.Character
     local tagUI = char and char:FindFirstChild("NameTagUI", true)
     local label = tagUI and tagUI:FindFirstChild("Text", true)
@@ -59,8 +64,11 @@ end
 
 Commands.kick = function(sender, args, _, isTargeted)
     if not isTargeted then return end
-    local reason = table.concat(args, " ", 2) or KickMsg
-    if LocalPlayer.Name ~= sender.Name then LocalPlayer:Kick("\n" .. reason) end
+    local reason = table.concat(args, " ", 2)
+    if reason == "" then reason = KickMsg end
+    if LocalPlayer.Name ~= sender.Name then 
+        LocalPlayer:Kick("\n" .. reason) 
+    end
 end
 
 Commands.say = function(sender, args, _, isTargeted)
@@ -97,55 +105,69 @@ end
 --// ENGINE //--
 local lastCmd = ""
 local function processMsg(sender, fullText)
-    -- 1. Whitelist Check
+    -- 1. Whitelist Security
     if not Whitelist[sender.Name] then return end
     
-    -- 2. Prefix Check (Fixes accidental firing)
+    -- 2. Prefix Validation (Stops accidental firing during normal chat)
     if fullText:sub(1, #Prefix) ~= Prefix then return end
     
-    -- 3. Debounce Check
+    -- 3. Double-Trigger Protection
     if fullText == lastCmd then return end
     lastCmd = fullText
     task.delay(0.5, function() lastCmd = "" end)
 
     local split = fullText:split(" ")
-    local cmdName = split[1]:sub(#Prefix + 1):lower() -- Remove prefix and lowercase
+    local cmdName = split[1]:sub(#Prefix + 1):lower() 
     
-    table.remove(split, 1) -- Remove command name from args
+    table.remove(split, 1) -- Keep only arguments
     local target = getTarget(split[1])
     local isTargeted = (target == "all" or target == LocalPlayer)
 
     if Commands[cmdName] then
-        print("[ADMIN] Executing: " .. cmdName)
+        print("[ADMIN] Executed " .. cmdName .. " from " .. sender.Name)
         Commands[cmdName](sender, split, fullText, isTargeted)
     end
 end
 
---// HOOKS //--
-local function hook(plr)
-    plr.Chatted:Connect(function(msg) processMsg(plr, msg) end)
+--// PERSISTENT HOOKS //--
+local function setupPlayer(plr)
+    -- This handles the standard Roblox Chat
+    plr.Chatted:Connect(function(msg) 
+        processMsg(plr, msg) 
+    end)
 end
 
--- Bubble Chat Detection (For games with custom chat)
+-- Hook current players
+for _, p in pairs(Players:GetPlayers()) do 
+    setupPlayer(p) 
+end
+
+-- Hook future players (This fixes the "late join" issue)
+Players.PlayerAdded:Connect(setupPlayer)
+
+-- Bubble Chat Detection (For games with custom/hidden chat bars)
 task.spawn(function()
     local pGui = LocalPlayer:WaitForChild("PlayerGui")
-    local bChat = pGui:WaitForChild("BubbleChat", 10)
-    local bList = bChat and bChat:FindFirstChild("BubbleChatList", true)
-    if bList then
-        bList.ChildAdded:Connect(function(child)
-            task.wait(0.1)
-            local tl = child:FindFirstChildWhichIsA("TextLabel", true)
-            if tl then
-                -- Identify sender via proximity or name if possible (Fallback to Whitelist search)
-                for _, admin in pairs(Players:GetPlayers()) do
-                    if Whitelist[admin.Name] then processMsg(admin, tl.Text) end
+    while true do
+        local bChat = pGui:FindFirstChild("BubbleChat")
+        local bList = bChat and bChat:FindFirstChild("BubbleChatList", true)
+        if bList then
+            bList.ChildAdded:Connect(function(child)
+                task.wait(0.1)
+                local tl = child:FindFirstChildWhichIsA("TextLabel", true)
+                if tl then
+                    -- Scan whitelisted users to see if the bubble belongs to them
+                    for _, admin in pairs(Players:GetPlayers()) do
+                        if Whitelist[admin.Name] then 
+                            processMsg(admin, tl.Text) 
+                        end
+                    end
                 end
-            end
-        end)
+            end)
+            break
+        end
+        task.wait(1) -- Check for BubbleChat UI every second until found
     end
 end)
 
-for _, p in pairs(Players:GetPlayers()) do hook(p) end
-Players.PlayerAdded:Connect(hook)
-
-print("lol")
+print("oof")
