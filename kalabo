@@ -1252,8 +1252,8 @@ local function CreateResultBox(name, iconId, color)
 end
 
 local HoldingVal = CreateResultBox("ITEM TOTAL", "922932229", Color3.fromRGB(100, 200, 255))
+local RemainingVal = CreateResultBox("FINAL TOTAL", "6023426926", Color3.fromRGB(255, 150, 0))
 local DroppedVal = CreateResultBox("SESSION DROPPED", "6031225818", Color3.fromRGB(100, 255, 100))
-local RemainingVal = CreateResultBox("REMAINING NEEDED", "6023426926", Color3.fromRGB(255, 100, 100))
 
 -- [[ CSN TARGET-LOCK SYNC SYSTEM ]] --
 
@@ -1271,7 +1271,7 @@ local function GetTotal()
     return t
 end
 
--- UI and Auto-Sync Loop
+-- UI and Auto-Sync Loop (Calculated Edition)
 task.spawn(function()
     while task.wait(0.1) do
         if LockedId then
@@ -1286,8 +1286,16 @@ task.spawn(function()
             HoldingVal.Text = tostring(currentTotal)
             DroppedVal.Text = tostring(SessionDroppedCount)
             
-            local remaining = math.max(0, goal - SessionDroppedCount)
-            RemainingVal.Text = tostring(remaining)
+            -- NEW CALCULATION LOGIC:
+            -- Shows what the inventory will be AFTER the drop is complete
+            local predictedFinal = math.max(0, currentTotal - (goal - SessionDroppedCount))
+            
+            -- If not dropping, just show Current - Goal
+            if not isDropping then
+                predictedFinal = math.max(0, currentTotal - goal)
+            end
+            
+            RemainingVal.Text = tostring(predictedFinal)
             
             LastTotal = currentTotal
         end
