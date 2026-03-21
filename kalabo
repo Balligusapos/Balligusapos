@@ -90,12 +90,7 @@ local function createParrotLoader()
         clone.Parent = content
     end
 end
-
--- Run 3 times
-for i = 1, 3 do
-    createParrotLoader()
-    task.wait(0.1)
-end
+createParrotLoader()
 -- [[ ERIK JOSHUA C. ARNEDO - ULTIMATE 2D PHYSICS & CAMERA SUITE ]]
 -- Features: Max Zoom, Freecam, God, Ghost, Inf Jump, Fly
 
