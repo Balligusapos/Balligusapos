@@ -1501,14 +1501,14 @@ ToggleBtn.MouseButton1Click:Connect(function()
         ToggleBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50) -- RED
         
         StatusVal.Text = "RUNNING"
-        StatusVal.TextColor3 = Color3.fromRGB(0,0,0) -- Reddish status
+        StatusVal.TextColor3 = Color3.fromRGB(255,255,255) -- Reddish status
     else
         -- SPAMMER IS NOW OFF (Show Green to Start)
         ToggleBtn.Text = "START SPAMMER"
         ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 220, 150) -- GREEN
         
         StatusVal.Text = "READY"
-        StatusVal.TextColor3 = Color3.fromRGB(0,0,0) -- Greenish status
+        StatusVal.TextColor3 = Color3.fromRGB(255,255,25) -- Greenish status
         TimerVal.Text = "0s"
     end
 end)
