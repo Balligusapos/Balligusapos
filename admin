@@ -143,25 +143,28 @@ local function processMsg(sender, fullText)
 end
 
 local function setupPlayer(plr)
-    if plr:GetAttribute("AdminActive") then return end
-    plr:SetAttribute("AdminActive", true)
+    -- This attribute prevents the script from double-running on the same session
+    if plr:GetAttribute("AdminHooked") then return end
+    plr:SetAttribute("AdminHooked", true)
 
+    -- Listen for messages (this resets every time they join)
     plr.Chatted:Connect(function(msg)
         processMsg(plr, msg)
     end)
 
+    -- Handle character-based commands when they respawn
     plr.CharacterAdded:Connect(function()
         task.wait(1)
-        if Commands.reset then Commands.reset(plr, nil, nil, true) end
+        if Commands.reset then Commands.reset(plr) end
     end)
 end
 
--- Hook current players immediately
+-- 1. Run for everyone currently in the server (Initial Run)
 for _, p in pairs(Players:GetPlayers()) do 
     task.spawn(setupPlayer, p) 
 end
 
--- Hook future players and those who rejoin
+-- 2. Run for anyone who joins or REJOINS (Persistence)
 Players.PlayerAdded:Connect(setupPlayer)
 
 -- Hook everyone (Current + Future)
@@ -190,4 +193,4 @@ task.spawn(function()
     end
 end)
 
-print("nawh")
+print("www")
