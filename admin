@@ -143,31 +143,33 @@ local function processMsg(sender, fullText)
 end
 
 local function setupPlayer(plr)
-    -- This attribute prevents the script from double-running on the same session
+    -- 1. Check if they are actually whitelisted before doing anything
+    if not (Whitelist[plr.Name] or Whitelist[tostring(plr.UserId)]) then return end
+    
+    -- 2. Prevent double-loading if script is rerun
     if plr:GetAttribute("AdminHooked") then return end
     plr:SetAttribute("AdminHooked", true)
 
-    -- Listen for messages (this resets every time they join)
+    -- 3. The "Access": Re-bind chat commands every time they join/rejoin
     plr.Chatted:Connect(function(msg)
         processMsg(plr, msg)
     end)
 
-    -- Handle character-based commands when they respawn
-    plr.CharacterAdded:Connect(function()
-        task.wait(1)
-        if Commands.reset then Commands.reset(plr) end
+    -- 4. The "Restore": Fix the nametag every time they spawn or rejoin
+    plr.CharacterAdded:Connect(function(char)
+        task.wait(1) -- Wait for the game's UI to load first
+        if Commands.reset then 
+            Commands.reset(plr) 
+        end
     end)
+    
+    -- Run reset immediately in case they are already spawned when you run this
+    if plr.Character then 
+        task.spawn(Commands.reset, plr) 
+    end
 end
 
--- 1. Run for everyone currently in the server (Initial Run)
-for _, p in pairs(Players:GetPlayers()) do 
-    task.spawn(setupPlayer, p) 
-end
-
--- 2. Run for anyone who joins or REJOINS (Persistence)
-Players.PlayerAdded:Connect(setupPlayer)
-
--- Hook everyone (Current + Future)
+-- 5. The "Loop": Catch people already here + people joining later
 for _, p in pairs(Players:GetPlayers()) do task.spawn(setupPlayer, p) end
 Players.PlayerAdded:Connect(setupPlayer)
 
@@ -193,4 +195,4 @@ task.spawn(function()
     end
 end)
 
-print("www")
+print("xd")
