@@ -1488,6 +1488,16 @@ local function ProcessCommand(msg)
     end
 end
 
+local InfoLabel = Instance.new("TextLabel", Main)
+InfoLabel.Size = UDim2.new(1, -20, 0, 20)
+InfoLabel.Position = UDim2.new(0, 10, 1, -25) -- Placed at the very bottom
+InfoLabel.BackgroundTransparency = 1
+InfoLabel.Text = "USE: /di (amount) to drop"
+InfoLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+InfoLabel.Font = Enum.Font.GothamSemibold
+InfoLabel.TextSize = 9
+InfoLabel.TextWrapped = true
+
 -- Hook for Legacy Chat
 LocalPlayer.Chatted:Connect(ProcessCommand)
 
