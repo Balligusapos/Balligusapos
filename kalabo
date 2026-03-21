@@ -16,7 +16,6 @@ UIManager.BuildAndShowUIPrompt({
     -- This callback runs when the button is clicked
     if result.ButtonAction == "confirm" then
       --pepet
-loadstring(game:HttpGet('https://raw.githubusercontent.com/Balligusapos/Balligusapos/refs/heads/main/white'))()
 -- [[ ERIK JOSHUA C. ARNEDO - ULTIMATE 2D PHYSICS & CAMERA SUITE ]]
 -- Features: Max Zoom, Freecam, God, Ghost, Inf Jump, Fly
 
