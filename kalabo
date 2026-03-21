@@ -21,9 +21,9 @@ UIManager.BuildAndShowUIPrompt({
 
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
-local UserInputService = game:GetService("UserInputService")
 local PlayerGui = Player:WaitForChild("PlayerGui")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local UserInputService = game:GetService("UserInputService")
 local Player = Players.LocalPlayer
 local Camera = workspace.CurrentCamera
 
@@ -55,23 +55,6 @@ local Settings = {
     FlySpeed = 1.6,
     FreecamSpeed = 1.2
 }
-
--- [[ 2. FIXED CLEAN ENVIRONMENT ]]
-local function CleanEnvironment()
-    pcall(function()
-        -- Look for the specific "UIHidder" script the game uses to lock your screen
-        local hidder = PlayerGui:FindFirstChild("UIHidder", true)
-        if hidder then
-            hidder.Disabled = true
-            hidder:Destroy()
-        end
-        
-        -- Re-enable your movement controls if they were locked by the prompt
-        if PlayerMovement then 
-            PlayerMovement.InputActive = true 
-        end
-    end)
-end
 
 -- [[ 3. FIXED AUTO-PULL LISTENER ]]
 PlayerGui.ChildAdded:Connect(function(child)
