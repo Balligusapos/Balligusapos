@@ -1,3 +1,21 @@
+local UIManager = require(game:GetService("ReplicatedStorage").Managers.UIManager)
+
+-- This uses the game's actual BuildAndShowUIPrompt function
+UIManager.BuildAndShowUIPrompt({
+    Title = "CAW CLIENT | CRAFT A WORLD", -- Your requested title
+    Icon = "rbxassetid://14221963562", -- Uses the punch icon from PlayerClientManager
+    Body = "Credits: Made by Ballz 👑",
+    Elements = {
+        {
+            Type = "Button",
+            Text = "CONTINUE",
+            Value = "confirm"
+        }
+    }
+}, function(result)
+    -- This callback runs when the button is clicked
+    if result.ButtonAction == "confirm" then
+      --pepet
 -- [[ ERIK JOSHUA C. ARNEDO - ULTIMATE 2D PHYSICS & CAMERA SUITE ]]
 -- Features: Max Zoom, Freecam, God, Ghost, Inf Jump, Fly
 
@@ -1555,3 +1573,5 @@ end)
 --SPAMMER--
 
 print("CLIENT MOD MENU DOY!")
+    end
+end)
