@@ -1465,52 +1465,50 @@ game:GetService("Players").LocalPlayer.PlayerGui.ChildAdded:Connect(function(chi
     end
 end)
 
--- [[ 3. CHAT COMMAND SYSTEM: /di ]] --
 local function ProcessCommand(msg)
     local args = string.split(msg, " ")
+    if #args < 2 then return end
+    
     local command = args[1]:lower()
     
     if command == "/di" then
         local amount = tonumber(args[2])
         
-        -- If no valid amount or no item is locked, stop here
+        -- Verification
         if not amount or not LockedId then 
+            warn("DM [CSN]: Select an item first or enter a valid number.")
             return 
         end
         
-        -- Set the UI text to the amount
-        AmountInput.Text = tostring(amount)
+        -- Update UI and Start
+        AmountInput.Text = string.format("%.0f", amount)
         
-        -- Trigger the drop if it's not already running
         if not isDropping then
-            StartDropProcess()
+            task.defer(StartDropProcess)
         end
     end
 end
 
+-- Hook for Modern TextChatService (The New Way)
+local TextChatService = game:GetService("TextChatService")
+if TextChatService.ChatVersion == Enum.ChatVersion.TextChatService then
+    TextChatService.SendingMessage:Connect(function(textObject)
+        ProcessCommand(textObject.Text)
+    end)
+else
+    -- Hook for Legacy Chat (The Old Way)
+    LocalPlayer.Chatted:Connect(ProcessCommand)
+end
+
+-- UI Info Label
 local InfoLabel = Instance.new("TextLabel", Main)
 InfoLabel.Size = UDim2.new(1, -20, 0, 20)
-InfoLabel.Position = UDim2.new(0, 10, 1, -25) -- Placed at the very bottom
+InfoLabel.Position = UDim2.new(0, 10, 1, -25)
 InfoLabel.BackgroundTransparency = 1
-InfoLabel.Text = "USE: /di (amount) to drop"
+InfoLabel.Text = "USE: /di [amount] TO DROP"
 InfoLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
 InfoLabel.Font = Enum.Font.GothamSemibold
 InfoLabel.TextSize = 9
-InfoLabel.TextWrapped = true
-
--- Hook for Legacy Chat
-LocalPlayer.Chatted:Connect(ProcessCommand)
-
--- Hook for Modern TextChatService
-local TextChatService = game:GetService("TextChatService")
-task.spawn(function()
-    -- We use a loop/event check to ensure we catch the local player's messages
-    TextChatService.MessageReceived:Connect(function(textObject)
-        if textObject.TextSource and textObject.TextSource.UserId == LocalPlayer.UserId then
-            ProcessCommand(textObject.Text)
-        end
-    end)
-end)
 
 --DROPPER--
 
