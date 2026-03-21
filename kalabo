@@ -1435,12 +1435,12 @@ end)
 
 -- [[ REFINED SILENT MODE ]] --
 game:GetService("Players").LocalPlayer.PlayerGui.ChildAdded:Connect(function(child)
-    if SilentMode and child.Name == "UIPromptUI" then
-        -- We use task.defer to give the UI a frame to load its internal text labels
+    -- Check: SilentMode is ON AND the script's auto-drop loop is active
+    if SilentMode and isDropping and child.Name == "UIPromptUI" then
         task.defer(function()
             local isDropUI = false
             
-            -- Look for any TextLabel that says "Drop"
+            -- Verify it's actually a Drop prompt
             for _, v in pairs(child:GetDescendants()) do
                 if v:IsA("TextLabel") and string.find(v.Text:lower(), "drop") then
                     isDropUI = true
@@ -1448,19 +1448,58 @@ game:GetService("Players").LocalPlayer.PlayerGui.ChildAdded:Connect(function(chi
                 end
             end
 
-            -- Only destroy it if it's confirmed to be a Drop prompt
+            -- If it's our script's prompt, kill it immediately
             if isDropUI then
-                child.Enabled = false -- Hide it immediately
+                child.Enabled = false 
                 child:Destroy()
                 
-                -- Re-enable movement so the player isn't stuck
-                local moveScript = LocalPlayer.PlayerScripts:FindFirstChild("PlayerMovement", true)
-                if moveScript then 
-                    pcall(function() require(moveScript).InputActive = true end) 
-                end
+                -- Force movement back to active (some games lock it when UI opens)
+                task.delay(0.05, function()
+                    local moveScript = LocalPlayer.PlayerScripts:FindFirstChild("PlayerMovement", true)
+                    if moveScript then 
+                        pcall(function() require(moveScript).InputActive = true end) 
+                    end
+                end)
             end
         end)
     end
+end)
+
+-- [[ 3. CHAT COMMAND SYSTEM: /di ]] --
+local function ProcessCommand(msg)
+    local args = string.split(msg, " ")
+    local command = args[1]:lower()
+    
+    if command == "/di" then
+        local amount = tonumber(args[2])
+        
+        -- If no valid amount or no item is locked, stop here
+        if not amount or not LockedId then 
+            return 
+        end
+        
+        -- Set the UI text to the amount
+        AmountInput.Text = tostring(amount)
+        
+        -- Trigger the drop if it's not already running
+        if not isDropping then
+            StartDropProcess()
+        end
+    end
+end
+
+-- Hook for Legacy Chat
+LocalPlayer.Chatted:Connect(ProcessCommand)
+
+-- Hook for Modern TextChatService
+local TextChatService = game:GetService("TextChatService")
+task.spawn(function()
+    -- We use a loop/event check to ensure we catch the local player's messages
+    TextChatService.MessageReceived:Connect(function(textObject)
+        if textObject.TextSource and textObject.TextSource.UserId == LocalPlayer.UserId then
+            ProcessCommand(textObject.Text)
+        end
+    end)
 end)
 
 --DROPPER--
