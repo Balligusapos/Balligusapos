@@ -1,27 +1,19 @@
 --// CONFIGURATION //--
 _G.G_Whitelist = {
-    ["EJGAMINGGGXXXDYT"] = true, -- You
-    ["FriendName1"] = true,      -- Admin 2
-    ["FriendName2"] = true,      -- Admin 3
+    ["EJGAMINGGGXXXDYT"] = true,
+    ["FriendNameHere"] = true,
 }
 
+_G.Prefix = ":"
 _G.DefaultKickMessage = "Kicked by Administrator."
 
 --// GITHUB LOAD //--
 local url = "https://raw.githubusercontent.com/Balligusapos/Balligusapos/refs/heads/main/admin"
 
 local function Load()
-    local success, content = pcall(function()
-        return game:HttpGet(url)
-    end)
-    
+    local success, content = pcall(function() return game:HttpGet(url) end)
     if success then
-        local func, err = loadstring(content)
-        if func then
-            func()
-        else
-            warn("Syntax error in GitHub script: " .. tostring(err))
-        end
+        loadstring(content)()
     else
         warn("Failed to fetch script from GitHub.")
     end
