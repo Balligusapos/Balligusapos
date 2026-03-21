@@ -3,7 +3,7 @@ local UIManager = require(game:GetService("ReplicatedStorage").Managers.UIManage
 -- This uses the game's actual BuildAndShowUIPrompt function
 UIManager.BuildAndShowUIPrompt({
     Title = "CAW CLIENT | CRAFT A WORLD", -- Your requested title
-    Icon = "rbxassetid://14221963562", -- Uses the punch icon from PlayerClientManager
+    Icon = "rbxassetid://96638081600454", -- Uses the punch icon from PlayerClientManager
     Body = "Credits: Made by Ballz 👑",
     Elements = {
         {
