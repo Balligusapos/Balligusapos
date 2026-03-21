@@ -1462,7 +1462,7 @@ ScreenGui.IgnoreGuiInset = true
 local Main = Instance.new("Frame", ScreenGui)
 Main.Name = "MainFrame"
 Main.Position = UDim2.new(0.5, -95, 0.4, 0)
-Main.Size = UDim2.new(0, 190, 0, 320) 
+Main.Size = UDim2.new(0, 190, 0, 420) 
 Main.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
 Main.BorderSizePixel = 0
 Main.Active = true
@@ -1624,7 +1624,7 @@ ToggleBtn.MouseButton1Click:Connect(function()
         ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 220, 150) -- GREEN
         
         StatusVal.Text = "READY"
-        StatusVal.TextColor3 = Color3.fromRGB(255,255,25) -- Greenish status
+        StatusVal.TextColor3 = Color3.fromRGB(255,255,255) -- Greenish status
         TimerVal.Text = "0s"
     end
 end)
