@@ -4,7 +4,7 @@ local UIManager = require(game:GetService("ReplicatedStorage").Managers.UIManage
 UIManager.BuildAndShowUIPrompt({
     Title = "CAW CLIENT | CRAFT A WORLD", -- Your requested title
     Icon = "rbxassetid://96638081600454", -- Uses the punch icon from PlayerClientManager
-    Body = "Credits: Made by Ballz 👑",
+    Body = "CREDITS: MADE BY @BALLZ 👑",
     Elements = {
         {
             Type = "Button",
@@ -1121,7 +1121,7 @@ ScreenGui.IgnoreGuiInset = true
 local Main = Instance.new("Frame", ScreenGui)
 Main.Name = "MainFrame"
 Main.Position = UDim2.new(0.5, -95, 0.4, 0)
-Main.Size = UDim2.new(0, 190, 0, 310) 
+Main.Size = UDim2.new(0, 190, 0, 370) 
 Main.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
 Main.BorderSizePixel = 0
 Main.Active = true
@@ -1251,9 +1251,9 @@ local function CreateResultBox(name, iconId, color)
     return ValDisp
 end
 
-local HoldingVal = CreateResultBox("ITEM TOTAL", "922932229", Color3.fromRGB(100, 200, 255))
-local RemainingVal = CreateResultBox("FINAL TOTAL", "6023426926", Color3.fromRGB(255, 150, 0))
+local HoldingVal = CreateResultBox("ITEM TOTAL", "6034287525", Color3.fromRGB(100, 200, 255))
 local DroppedVal = CreateResultBox("SESSION DROPPED", "6031225818", Color3.fromRGB(100, 255, 100))
+local RemainingVal = CreateResultBox("FINAL TOTAL", "6023426926", Color3.fromRGB(255, 150, 0))
 
 -- [[ CSN TARGET-LOCK SYNC SYSTEM ]] --
 
@@ -1271,31 +1271,33 @@ local function GetTotal()
     return t
 end
 
--- UI and Auto-Sync Loop (Calculated Edition)
+-- UI and Auto-Sync Loop (Smart Calcu Edition)
 task.spawn(function()
     while task.wait(0.1) do
         if LockedId then
             local currentTotal = GetTotal()
             local goal = tonumber(AmountInput.Text) or 0
             
-            -- Session reset logic
-            if currentTotal > (LastTotal or 0) and not isDropping then
-                SessionDroppedCount = 0
-            end
-
+            -- Update the main displays
             HoldingVal.Text = tostring(currentTotal)
             DroppedVal.Text = tostring(SessionDroppedCount)
+
+            -- [[ SMART CALCULATION ]]
+            -- We calculate what you SHOULD have left when the goal is reached.
+            -- If not dropping: Current - Goal
+            -- If dropping: We track how much of that goal is still remaining to be dropped.
             
-            -- NEW CALCULATION LOGIC:
-            -- Shows what the inventory will be AFTER the drop is complete
-            local predictedFinal = math.max(0, currentTotal - (goal - SessionDroppedCount))
+            local remainingToDrop = math.max(0, goal - SessionDroppedCount)
+            local finalResult = math.max(0, currentTotal - remainingToDrop)
             
-            -- If not dropping, just show Current - Goal
-            if not isDropping then
-                predictedFinal = math.max(0, currentTotal - goal)
+            -- This prevents the "3000" error by ensuring we only subtract 
+            -- the UNFINISHED part of your goal from your CURRENT total.
+            RemainingVal.Text = tostring(finalResult)
+            
+            -- Reset session only if inventory INCREASES (Collecting)
+            if currentTotal > (LastTotal or 0) then
+                SessionDroppedCount = 0
             end
-            
-            RemainingVal.Text = tostring(predictedFinal)
             
             LastTotal = currentTotal
         end
@@ -1475,7 +1477,7 @@ ScreenGui.IgnoreGuiInset = true
 local Main = Instance.new("Frame", ScreenGui)
 Main.Name = "MainFrame"
 Main.Position = UDim2.new(0.5, -95, 0.4, 0)
-Main.Size = UDim2.new(0, 190, 0, 420) 
+Main.Size = UDim2.new(0, 190, 0, 320) 
 Main.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
 Main.BorderSizePixel = 0
 Main.Active = true
