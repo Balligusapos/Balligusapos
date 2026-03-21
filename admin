@@ -142,22 +142,30 @@ local function processMsg(sender, fullText)
     end
 end
 
---// PERSISTENT PLAYER HOOKS //--
 local function setupPlayer(plr)
-    -- This handles the chat commands
+    if plr:GetAttribute("AdminActive") then return end
+    plr:SetAttribute("AdminActive", true)
+
     plr.Chatted:Connect(function(msg)
         processMsg(plr, msg)
     end)
-    
-    -- Auto-restore visuals when they respawn
+
     plr.CharacterAdded:Connect(function()
         task.wait(1)
-        if Commands.reset then Commands.reset(plr) end
+        if Commands.reset then Commands.reset(plr, nil, nil, true) end
     end)
 end
 
--- Hook current and future players
-for _, p in pairs(Players:GetPlayers()) do setupPlayer(p) end
+-- Hook current players immediately
+for _, p in pairs(Players:GetPlayers()) do 
+    task.spawn(setupPlayer, p) 
+end
+
+-- Hook future players and those who rejoin
+Players.PlayerAdded:Connect(setupPlayer)
+
+-- Hook everyone (Current + Future)
+for _, p in pairs(Players:GetPlayers()) do task.spawn(setupPlayer, p) end
 Players.PlayerAdded:Connect(setupPlayer)
 
 -- Bubble Chat Detection
@@ -182,4 +190,4 @@ task.spawn(function()
     end
 end)
 
-print("nah")
+print("nawh")
