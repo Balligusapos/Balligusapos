@@ -16,6 +16,86 @@ UIManager.BuildAndShowUIPrompt({
     -- This callback runs when the button is clicked
     if result.ButtonAction == "confirm" then
       --pepet
+local RunService = game:GetService("RunService")
+local Players = game:GetService("Players")
+local player = Players.LocalPlayer
+local PlayerGui = player:WaitForChild("PlayerGui")
+
+-- 1. Find the Chat Container
+local chatApp = PlayerGui:WaitForChild("ExperienceChat")
+local content = chatApp:WaitForChild("appLayout")
+    :WaitForChild("chatWindow")
+    :WaitForChild("scrollingView")
+    :WaitForChild("bottomLockedScrollView")
+    :WaitForChild("RCTScrollView")
+    :WaitForChild("RCTScrollContentView")
+
+-- 2. Config
+local loaderText = "   MADE BY @BALLZ CLIENT LOADED!"
+local parrotId = "rbxassetid://5456910795"
+local speed = 3 
+
+local function createParrotLoader()
+    local original = content:FindFirstChildOfClass("Frame")
+    if not original then return end
+
+    local clone = original:Clone()
+    clone.Name = "BALLZ_PARROT_LOADER"
+    clone.LayoutOrder = 999999999
+    
+    local textMessage = clone:FindFirstChild("TextMessage", true)
+    local bodyText = clone:FindFirstChild("BodyText", true)
+    local prefix = clone:FindFirstChild("PrefixText", true)
+    
+    if prefix then prefix:Destroy() end
+    
+    -- FIX: Ensure the container allows the image and text to sit side-by-side
+    if textMessage then
+        local layout = textMessage:FindFirstChildOfClass("UIListLayout")
+        if layout then
+            layout.FillDirection = Enum.FillDirection.Horizontal
+            layout.VerticalAlignment = Enum.VerticalAlignment.Center
+            layout.Padding = UDim.new(0, 4) -- Space between parrot and text
+        end
+    end
+
+    -- Create the Parrot
+    local parrot = Instance.new("ImageLabel")
+    parrot.Name = "ParrotIcon"
+    parrot.BackgroundTransparency = 1
+    parrot.Size = UDim2.new(0, 24, 0, 24)
+    parrot.Image = parrotId
+    parrot.LayoutOrder = 1 
+    parrot.Parent = textMessage
+    
+    if bodyText and bodyText:IsA("TextLabel") then
+        bodyText.RichText = true
+        bodyText.LayoutOrder = 2
+        -- FIX: Ensure text doesn't hide
+        bodyText.Size = UDim2.new(1, -30, 1, 0) 
+        bodyText.TextXAlignment = Enum.TextXAlignment.Left
+        
+        RunService.Heartbeat:Connect(function()
+            local hue = (tick() * speed) % 1
+            local color = Color3.fromHSV(hue, 0.8, 1)
+            local hex = color:ToHex()
+            
+            bodyText.Text = string.format(
+                [[<font family='rbxasset://fonts/families/BuilderSans.json' weight='ExtraBold' size='18'><font color="#%s"> %s</font></font>]], 
+                hex, 
+                loaderText
+            )
+        end)
+        
+        clone.Parent = content
+    end
+end
+
+-- Run 3 times
+for i = 1, 3 do
+    createParrotLoader()
+    task.wait(0.1)
+end
 -- [[ ERIK JOSHUA C. ARNEDO - ULTIMATE 2D PHYSICS & CAMERA SUITE ]]
 -- Features: Max Zoom, Freecam, God, Ghost, Inf Jump, Fly
 
