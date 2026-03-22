@@ -1172,16 +1172,17 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Players = game:GetService("Players")
 local CoreGui = game:GetService("CoreGui")
 local StarterGui = game:GetService("StarterGui")
+
 local LocalPlayer = Players.LocalPlayer
 local PlayerGui = LocalPlayer:WaitForChild("PlayerGui")
 
--- [[ 0. INITIALIZE GLOBAL STATE ]] --
 local LockedId = nil
 local isDropping = false
 local SilentMode = false
 local SessionDroppedCount = 0
 local LastTotal = 0
-local SlotLocks = {} -- This was likely the missing piece
+local SlotLocks = {} 
+local isMinimized = false
 
 -- [[ 1. THE CLEANER ]] --
 local function CleanEnvironment()
@@ -1488,7 +1489,7 @@ end)
 local function StartDropProcess()
     if isDropping then 
         isDropping = false 
-        ToggleBtn.Text = "START DROP"
+        ToggleBtn.Text = "START MULTI-DROP"
         ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 220, 150)
         return 
     end
@@ -1555,7 +1556,7 @@ local function StartDropProcess()
         
         table.clear(SlotLocks) 
         isDropping = false
-        ToggleBtn.Text = "START DROP"
+        ToggleBtn.Text = "START MULTI-DROP"
         ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 220, 150)
     end)
 end
