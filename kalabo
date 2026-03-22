@@ -1606,11 +1606,11 @@ SilentBtn.MouseButton1Click:Connect(function()
     if SilentMode then
         -- [[ IF ON ]]
         SilentBtn.Text = "SHOW UI: OFF" -- (Meaning Silent is Active)
-        SilentBtn.BackgroundColor3 = Color3.fromRGB(0, 220, 150) -- Green
+        SilentBtn.BackgroundColor3 = Color3.fromRGB(220, 80, 80) -- Green
     else
         -- [[ IF OFF ]]
         SilentBtn.Text = "SHOW UI: ON" -- (Meaning Silent is Inactive)
-        SilentBtn.BackgroundColor3 = Color3.fromRGB(220, 80, 80) -- Red
+        SilentBtn.BackgroundColor3 = Color3.fromRGB(0, 220, 150) -- Red
     end
 end)
 
