@@ -120,6 +120,7 @@ local Settings = {
     AutoWarn = false,
     SkinChanger = false,
     AutoPull = false,
+    FPSBoost = false,
     SkinIndex = 1,
     Skins = {"785c51", "977263", "b38b79", "c49582", "e1ab97", "ffc4aa", "feceb3", "ffddb7", "ffe6c8"},
     SpeedMultiplier = 0.4, -- The default value you requested
@@ -518,6 +519,41 @@ end
     end
 end)
 
+-- [[ FPS BOOST / PLASTIC MODE LOGIC ]]
+local function ApplyFPSBoost()
+    for _, obj in pairs(workspace:GetDescendants()) do
+        if Settings.FPSBoost then
+            if obj:IsA("BasePart") then
+                obj.Material = Enum.Material.SmoothPlastic
+                obj.CastShadow = false
+            elseif obj:IsA("Decal") or obj:IsA("Texture") then
+                obj.Transparency = 1
+            end
+        end
+    end
+end
+
+-- Watch for toggle and new objects
+workspace.DescendantAdded:Connect(function(obj)
+    if Settings.FPSBoost then
+        task.wait()
+        if obj:IsA("BasePart") then 
+            obj.Material = Enum.Material.SmoothPlastic 
+            obj.CastShadow = false
+        elseif obj:IsA("Decal") or obj:IsA("Texture") then 
+            obj.Transparency = 1 
+        end
+    end
+end)
+
+-- Run a check every few seconds to catch missed tiles
+task.spawn(function()
+    while true do
+        if Settings.FPSBoost then ApplyFPSBoost() end
+        task.wait(5)
+    end
+end)
+
 -- [[ ERIK JOSHUA C. ARNEDO - CAW CLIENT V2 (FIXED & COMPACT) ]]
 
 local Players = game:GetService("Players")
@@ -705,6 +741,7 @@ local Features = {
     {"AUTO-WARN", "AutoWarn"},
     {"SKIN-CHANGER", "SkinChanger"},
     {"INSTANT-PULL", "AutoPull"}
+    {"FPS-BOOST", "FPSBoost"},
 }
 
 -- [[ LOOP TO GENERATE ]]
