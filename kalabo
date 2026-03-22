@@ -1987,6 +1987,7 @@ end)
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 local CoreGui = game:GetService("CoreGui")
 
 local LocalPlayer = Players.LocalPlayer
@@ -2007,6 +2008,7 @@ local ICON_CLEAR = getAsset("8463436236")
 local ICON_AUTO = getAsset("12662723726")
 local ICON_SYSTEM = getAsset("1764960415")
 local ICON_SEARCH = getAsset("118685771787843")
+local ICON_MAIN = "rbxassetid://10734947413"
 
 -- Settings
 local UI_SIZE = UDim2.new(0, 320, 0, 220) 
@@ -2015,10 +2017,11 @@ local AUTO_CLEAR = true
 local ONLY_ME = false
 local CURRENT_SEARCH = ""
 local LOG_TEXT_SIZE = 8 
+local MIN_LIMIT = Vector2.new(250, 150)
 
 -- UI Setup
 local ScreenGui = Instance.new("ScreenGui", CoreGui)
-ScreenGui.Name = "CAW_V19"
+ScreenGui.Name = "CAW_V19_PRO"
 
 local MainFrame = Instance.new("Frame", ScreenGui)
 MainFrame.Size = UI_SIZE
@@ -2030,78 +2033,139 @@ MainFrame.Active = true
 MainFrame.Draggable = true
 Instance.new("UICorner", MainFrame).CornerRadius = UDim.new(0, 3)
 
--- Header
-local Title = Instance.new("TextLabel", MainFrame)
-Title.Size = UDim2.new(1, -150, 0, 24)
-Title.Position = UDim2.new(0, 8, 0, 0)
-Title.Text = "CAW CLIENT // LOGS"
-Title.TextColor3 = Color3.fromRGB(0, 255, 150)
+-- Header Section
+local Header = Instance.new("Frame", MainFrame)
+Header.Size = UDim2.new(1, 0, 0, 48)
+Header.BackgroundTransparency = 1
+
+local MainIcon = Instance.new("ImageLabel", Header)
+MainIcon.Size = UDim2.new(0, 16, 0, 16)
+MainIcon.Position = UDim2.new(0, 8, 0, 8)
+MainIcon.Image = ICON_MAIN
+MainIcon.ImageColor3 = Color3.fromRGB(0, 255, 100)
+MainIcon.BackgroundTransparency = 1
+
+-- Find this section in your script and replace it:
+local Title = Instance.new("TextLabel", Header)
+Title.Size = UDim2.new(0, 100, 0, 32) -- Reduced from 150 to 100
+Title.Position = UDim2.new(0, 28, 0, 0)
+Title.Text = "CAW // LOGS"
+Title.TextColor3 = Color3.new(1, 1, 1)
 Title.Font = Enum.Font.Code
-Title.TextSize = 11
+Title.TextSize = 12
 Title.BackgroundTransparency = 1
 Title.TextXAlignment = Enum.TextXAlignment.Left
+Title.ClipsDescendants = false -- Ensure text doesn't cut if frame shrinks
 
-local SizeUp = Instance.new("TextButton", MainFrame)
-SizeUp.Size = UDim2.new(0, 18, 0, 18)
-SizeUp.Position = UDim2.new(1, -125, 0, 3)
-SizeUp.Text = "+" 
-SizeUp.TextColor3 = Color3.new(1, 1, 1)
-SizeUp.BackgroundTransparency = 1
-SizeUp.Font = Enum.Font.Code
-SizeUp.TextSize = 14 
+-- Silver Gradient for Title
+local TitleGradient = Instance.new("UIGradient", Title)
+TitleGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(150, 150, 150)), -- Darker Silver
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(220, 220, 220)), -- Bright Silver
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 150, 150)) -- Darker Silver
+})
+TitleGradient.Rotation = 90
 
-local SizeDown = Instance.new("TextButton", MainFrame)
-SizeDown.Size = UDim2.new(0, 18, 0, 18)
-SizeDown.Position = UDim2.new(1, -145, 0, 3)
-SizeDown.Text = "-" 
-SizeDown.TextColor3 = Color3.new(1, 1, 1)
+-- Row 1: [—] [«] [»]
+local Row1 = Instance.new("Frame", Header)
+Row1.Size = UDim2.new(0, 100, 0, 32)
+Row1.Position = UDim2.new(1, -110, 0, 0)
+Row1.BackgroundTransparency = 1
+
+local Row1 = Instance.new("Frame", Header)
+Row1.Size = UDim2.new(0, 100, 0, 32)
+Row1.Position = UDim2.new(1, -110, 0, 0)
+Row1.BackgroundTransparency = 1
+
+local Row1List = Instance.new("UIListLayout", Row1)
+Row1List.FillDirection = Enum.FillDirection.Horizontal
+Row1List.HorizontalAlignment = Enum.HorizontalAlignment.Right
+Row1List.VerticalAlignment = Enum.VerticalAlignment.Center
+Row1List.Padding = UDim.new(0, 12)
+Row1List.SortOrder = Enum.SortOrder.LayoutOrder 
+
+-- [«] Button (Far Left)
+local SizeDown = Instance.new("TextButton", Row1)
+SizeDown.Size = UDim2.new(0, 20, 0, 20)
+SizeDown.Text = "«" 
+SizeDown.LayoutOrder = 1 -- Smallest number goes first
+SizeDown.TextColor3 = Color3.new(0.8, 0.8, 0.8)
 SizeDown.BackgroundTransparency = 1
 SizeDown.Font = Enum.Font.Code
-SizeDown.TextSize = 14
+SizeDown.TextSize = 18
 
--- Header Controls
-local AutoBtn = Instance.new("ImageButton", MainFrame)
-AutoBtn.Size = UDim2.new(0, 16, 0, 16)
-AutoBtn.Position = UDim2.new(1, -60, 0, 4)
+-- [»] Button (Middle)
+local SizeUp = Instance.new("TextButton", Row1)
+SizeUp.Size = UDim2.new(0, 20, 0, 20)
+SizeUp.Text = "»" 
+SizeUp.LayoutOrder = 2 -- Middle number
+SizeUp.TextColor3 = Color3.new(0.8, 0.8, 0.8)
+SizeUp.BackgroundTransparency = 1
+SizeUp.Font = Enum.Font.Code
+SizeUp.TextSize = 18
+
+-- [≡] Button (Far Right)
+local MinBtn = Instance.new("TextButton", Row1)
+MinBtn.Size = UDim2.new(0, 20, 0, 20)
+MinBtn.Text = "≡"
+MinBtn.LayoutOrder = 3 -- Largest number goes last
+MinBtn.TextColor3 = Color3.new(0.8, 0.8, 0.8)
+MinBtn.BackgroundTransparency = 1
+MinBtn.Font = Enum.Font.Code
+MinBtn.TextSize = 18
+
+-- Row 2: Controls
+local Row2 = Instance.new("Frame", Header)
+Row2.Size = UDim2.new(1, -16, 0, 24)
+Row2.Position = UDim2.new(0, 8, 0, 28)
+Row2.BackgroundTransparency = 1
+
+-- Settings update
+local ONLY_ME = false -- Default is OFF
+
+-- Button Setup
+local OnlyMeBtn = Instance.new("TextButton", Row2)
+OnlyMeBtn.Size = UDim2.new(0, 90, 1, 0)
+OnlyMeBtn.BackgroundTransparency = 1
+OnlyMeBtn.Text = "MY LOGS: OFF"
+OnlyMeBtn.TextColor3 = Color3.fromRGB(255, 50, 50) -- Default Red
+OnlyMeBtn.Font = Enum.Font.Code
+OnlyMeBtn.TextSize = 9
+OnlyMeBtn.TextXAlignment = Enum.TextXAlignment.Left
+
+local ControlGroup = Instance.new("Frame", Row2)
+ControlGroup.Size = UDim2.new(0, 100, 1, 0)
+ControlGroup.Position = UDim2.new(1, -100, 0, 0)
+ControlGroup.BackgroundTransparency = 1
+
+local GroupList = Instance.new("UIListLayout", ControlGroup)
+GroupList.FillDirection = Enum.FillDirection.Horizontal
+GroupList.HorizontalAlignment = Enum.HorizontalAlignment.Right
+GroupList.VerticalAlignment = Enum.VerticalAlignment.Center
+GroupList.Padding = UDim.new(0, 12)
+
+local AutoBtn = Instance.new("ImageButton", ControlGroup)
+AutoBtn.Size = UDim2.new(0, 15, 0, 15)
 AutoBtn.Image = ICON_AUTO
 AutoBtn.BackgroundTransparency = 1
 AutoBtn.ImageColor3 = Color3.fromRGB(0, 200, 255)
 
-local ClearBtn = Instance.new("ImageButton", MainFrame)
-ClearBtn.Size = UDim2.new(0, 16, 0, 16)
-ClearBtn.Position = UDim2.new(1, -85, 0, 4)
+local ClearBtn = Instance.new("ImageButton", ControlGroup)
+ClearBtn.Size = UDim2.new(0, 15, 0, 15)
 ClearBtn.Image = ICON_CLEAR
 ClearBtn.BackgroundTransparency = 1
 ClearBtn.ImageColor3 = Color3.fromRGB(200, 50, 50)
 
-local ScanBtn = Instance.new("ImageButton", MainFrame)
-ScanBtn.Size = UDim2.new(0, 16, 0, 16)
-ScanBtn.Position = UDim2.new(1, -110, 0, 4)
+local ScanBtn = Instance.new("ImageButton", ControlGroup)
+ScanBtn.Size = UDim2.new(0, 15, 0, 15)
 ScanBtn.Image = ICON_SEARCH
 ScanBtn.BackgroundTransparency = 1
 ScanBtn.ImageColor3 = Color3.fromRGB(0, 255, 150)
 
-local OnlyMeBtn = Instance.new("TextButton", MainFrame)
-OnlyMeBtn.Size = UDim2.new(0, 70, 0, 16)
-OnlyMeBtn.Position = UDim2.new(1, -215, 0, 4)
-OnlyMeBtn.BackgroundTransparency = 1
-OnlyMeBtn.Text = "MY LOGS: OFF"
-OnlyMeBtn.TextColor3 = Color3.new(1, 1, 1)
-OnlyMeBtn.Font = Enum.Font.Code
-OnlyMeBtn.TextSize = 9
-
-local MinBtn = Instance.new("TextButton", MainFrame)
-MinBtn.Size = UDim2.new(0, 24, 0, 24)
-MinBtn.Position = UDim2.new(1, -25, 0, 0)
-MinBtn.Text = "—"
-MinBtn.Font = Enum.Font.Code
-MinBtn.TextColor3 = Color3.new(1, 1, 1)
-MinBtn.BackgroundTransparency = 1
-
 -- Search Bar
 local SearchFrame = Instance.new("Frame", MainFrame)
 SearchFrame.Size = UDim2.new(1, -16, 0, 20)
-SearchFrame.Position = UDim2.new(0, 8, 0, 26)
+SearchFrame.Position = UDim2.new(0, 8, 0, 50)
 SearchFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
 SearchFrame.BackgroundTransparency = 0.5
 Instance.new("UICorner", SearchFrame)
@@ -2125,24 +2189,31 @@ SearchInput.TextXAlignment = Enum.TextXAlignment.Left
 
 -- Log Area
 local LogContainer = Instance.new("ScrollingFrame", MainFrame)
-LogContainer.Size = UDim2.new(1, -6, 1, -52)
-LogContainer.Position = UDim2.new(0, 3, 0, 48)
+LogContainer.Size = UDim2.new(1, -6, 1, -74)
+LogContainer.Position = UDim2.new(0, 3, 0, 72)
 LogContainer.BackgroundTransparency = 1
 LogContainer.ScrollBarThickness = 1
 LogContainer.CanvasSize = UDim2.new(0, 0, 0, 0)
 LogContainer.AutomaticCanvasSize = Enum.AutomaticSize.Y
-
 local UIList = Instance.new("UIListLayout", LogContainer)
 UIList.SortOrder = Enum.SortOrder.LayoutOrder
 UIList.Padding = UDim.new(0, 2)
 
--- Functions
+-- Resize Handle
+local ResizeHandle = Instance.new("TextButton", MainFrame)
+ResizeHandle.Size = UDim2.new(0, 16, 0, 16)
+ResizeHandle.Position = UDim2.new(1, -16, 1, -16)
+ResizeHandle.BackgroundTransparency = 1
+ResizeHandle.Text = "◢"
+ResizeHandle.TextColor3 = Color3.fromRGB(0, 255, 150)
+ResizeHandle.ZIndex = 10
+
+-- [ LOGIC FUNCTIONS ] --
+
 local function shakeUI(obj)
     local origPos = obj.Position
     for i = 1, 6 do
-        local xOffset = math.random(-2, 2)
-        local yOffset = math.random(-2, 2)
-        obj.Position = origPos + UDim2.new(0, xOffset, 0, yOffset)
+        obj.Position = origPos + UDim2.new(0, math.random(-2, 2), 0, math.random(-2, 2))
         task.wait(0.02)
     end
     obj.Position = origPos
@@ -2154,7 +2225,6 @@ local function performCawScan()
     local inventory = {}
     local statusLog = createLog("SYSTEM", "WORLD", ICON_SEARCH, "SCANNING", true, ICON_SYSTEM)
     local label = statusLog:WaitForChild("DetailLabel", 2)
-    
     local scanning = true
     task.spawn(function()
         local dots = 0
@@ -2164,22 +2234,16 @@ local function performCawScan()
             task.wait(0.3)
         end
     end)
-
-    -- The actual indexing
     for _, item in ipairs(DropsFolder:GetChildren()) do
         if item:IsA("BasePart") then
             local id = item:GetAttribute("id")
             local name = (id and ItemsManager.GetName(id)) or item.Name or "ITEM"
-            local amt = item:GetAttribute("amount") or 1
-            inventory[name] = (inventory[name] or 0) + amt
+            inventory[name] = (inventory[name] or 0) + (item:GetAttribute("amount") or 1)
         end
     end
-    
     task.wait(0.4) 
     scanning = false
     if label then label.Text = "SYSTEM | SCAN COMPLETE" end
-
-    -- Output totals
     for name, total in pairs(inventory) do
         createLog("WORLD", "TOTAL", ICON_AUTO, name .. " x" .. total, true, ICON_SYSTEM)
     end
@@ -2191,23 +2255,37 @@ local function updateAllLogSizes()
             log.Size = UDim2.new(1, 0, 0, LOG_TEXT_SIZE + 8)
             for _, child in ipairs(log:GetChildren()) do
                 if child:IsA("TextLabel") then
-                    if child.Name == "TimeLabel" then
-                        child.TextSize = LOG_TEXT_SIZE - 1
-                    else
-                        child.TextSize = LOG_TEXT_SIZE
-                    end
+                    child.TextSize = (child.Name == "TimeLabel") and (LOG_TEXT_SIZE - 1) or LOG_TEXT_SIZE
                 end
             end
         end
     end
 end
 
+-- Resize Dragging
+local isResizing = false
+ResizeHandle.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then
+        isResizing = true
+        local startSize = MainFrame.Size
+        local startMouse = UserInputService:GetMouseLocation()
+        local moveConn
+        moveConn = UserInputService.InputChanged:Connect(function()
+            if isResizing then
+                local delta = UserInputService:GetMouseLocation() - startMouse
+                MainFrame.Size = UDim2.new(0, math.max(MIN_LIMIT.X, startSize.X.Offset + delta.X), 0, math.max(MIN_LIMIT.Y, startSize.Y.Offset + delta.Y))
+                UI_SIZE = MainFrame.Size 
+            else moveConn:Disconnect() end
+        end)
+    end
+end)
+UserInputService.InputEnded:Connect(function(input) if input.UserInputType == Enum.UserInputType.MouseButton1 then isResizing = false end end)
+
+-- Listeners
 SizeUp.MouseButton1Click:Connect(function()
     if LOG_TEXT_SIZE < 16 then
         LOG_TEXT_SIZE = LOG_TEXT_SIZE + 1
         updateAllLogSizes()
-        Title.TextSize = 12
-        task.delay(0.1, function() Title.TextSize = 11 end)
     end
 end)
 
@@ -2220,17 +2298,20 @@ end)
 
 OnlyMeBtn.MouseButton1Click:Connect(function()
     ONLY_ME = not ONLY_ME
-    OnlyMeBtn.Text = ONLY_ME and "MY LOGS: ON" or "MY LOGS: OFF"
-    OnlyMeBtn.TextColor3 = ONLY_ME and Color3.fromRGB(0, 255, 120) or Color3.new(1, 1, 1)
+    
+    -- Update Text and Color based on state
+    if ONLY_ME then
+        OnlyMeBtn.Text = "MY LOGS: ON"
+        OnlyMeBtn.TextColor3 = Color3.fromRGB(0, 255, 120) -- Green
+    else
+        OnlyMeBtn.Text = "MY LOGS: OFF"
+        OnlyMeBtn.TextColor3 = Color3.fromRGB(255, 50, 50) -- Red
+    end
+    
+    -- Filter existing logs
     for _, log in ipairs(LogContainer:GetChildren()) do
         if log:IsA("Frame") and log:GetAttribute("SearchTag") then
-            local isLocalLog = log:GetAttribute("IsLocal")
-            if ONLY_ME then
-                log.Visible = isLocalLog == true
-            else
-                local searchMatch = log:GetAttribute("SearchTag"):find(CURRENT_SEARCH) ~= nil
-                log.Visible = searchMatch
-            end
+            log.Visible = not ONLY_ME or log:GetAttribute("IsLocal")
         end
     end
 end)
@@ -2262,14 +2343,28 @@ SearchInput:GetPropertyChangedSignal("Text"):Connect(function()
 end)
 
 MinBtn.MouseButton1Click:Connect(function()
-    local IsMin = (MainFrame.Size.Y.Offset > 24)
-    MainFrame:TweenSize(IsMin and UDim2.new(0, 320, 0, 24) or UI_SIZE, "Out", "Quart", 0.2, true)
+    local IsMin = (MainFrame.Size.Y.Offset > 50)
+    
+    -- Toggle the Size
+    MainFrame:TweenSize(
+        IsMin and UDim2.new(0, UI_SIZE.X.Offset, 0, 32) or UI_SIZE, -- Set min height to 32 to match title height
+        "Out", "Quart", 0.2, true
+    )
+    
+    -- Smoothly hide/show other elements
     LogContainer.Visible = not IsMin
     SearchFrame.Visible = not IsMin
-    OnlyMeBtn.Visible = not IsMin
-    SizeUp.Visible = not IsMin
-    SizeDown.Visible = not IsMin
-    MinBtn.Text = IsMin and "+" or "—"
+    Row2.Visible = not IsMin
+    ResizeHandle.Visible = not IsMin
+    
+    -- Update Button Text
+    MinBtn.Text = IsMin and "-" or "≡"
+    
+    -- Fix: Ensure Title is vertically centered in the minimized bar
+    if IsMin then
+        Title.Position = UDim2.new(0, 28, 0, 0)
+        MainIcon.Position = UDim2.new(0, 8, 0, 8)
+    end
 end)
 
 createLog = function(pName, status, actionIcon, itemText, isLocal, customPlayerIcon)
@@ -2283,11 +2378,13 @@ createLog = function(pName, status, actionIcon, itemText, isLocal, customPlayerI
     logEntry:SetAttribute("SearchTag", searchTag)
     logEntry.Visible = searchTag:find(CURRENT_SEARCH) ~= nil
     local txtColor = isLocal and Color3.fromRGB(0, 255, 120) or Color3.new(1, 1, 1)
+    
     local aIcon = Instance.new("ImageLabel", logEntry)
     aIcon.Size = UDim2.new(0, 14, 0, 14)
     aIcon.Position = UDim2.new(0, 2, 0.5, -7)
     aIcon.Image = actionIcon
     aIcon.BackgroundTransparency = 1
+    
     local statusLbl = Instance.new("TextLabel", logEntry)
     statusLbl.Size = UDim2.new(0, 50, 1, 0)
     statusLbl.Position = UDim2.new(0, 20, 0, 0)
@@ -2297,11 +2394,13 @@ createLog = function(pName, status, actionIcon, itemText, isLocal, customPlayerI
     statusLbl.Font = Enum.Font.Code
     statusLbl.TextSize = LOG_TEXT_SIZE
     statusLbl.TextXAlignment = Enum.TextXAlignment.Left
+    
     local pIcon = Instance.new("ImageLabel", logEntry)
     pIcon.Size = UDim2.new(0, 14, 0, 14)
     pIcon.Position = UDim2.new(0, 75, 0.5, -7)
     pIcon.Image = customPlayerIcon or ICON_PLAYER
     pIcon.BackgroundTransparency = 1
+    
     local detailLbl = Instance.new("TextLabel", logEntry)
     detailLbl.Name = "DetailLabel"
     detailLbl.Size = UDim2.new(1, -145, 1, 0)
@@ -2312,6 +2411,7 @@ createLog = function(pName, status, actionIcon, itemText, isLocal, customPlayerI
     detailLbl.Font = Enum.Font.Code
     detailLbl.TextSize = LOG_TEXT_SIZE
     detailLbl.TextXAlignment = Enum.TextXAlignment.Left
+    
     local timerLbl = Instance.new("TextLabel", logEntry)
     timerLbl.Name = "TimeLabel"
     timerLbl.Size = UDim2.new(0, 45, 1, 0)
@@ -2322,30 +2422,18 @@ createLog = function(pName, status, actionIcon, itemText, isLocal, customPlayerI
     timerLbl.Font = Enum.Font.Code
     timerLbl.TextSize = LOG_TEXT_SIZE - 1
     timerLbl.TextXAlignment = Enum.TextXAlignment.Right
+
     task.spawn(function()
         while logEntry and logEntry.Parent do
             local diff = math.floor(tick() - createdAt)
-            timerLbl.Text = diff < 60 and diff .. "s ago" or math.floor(diff/60) .. "m ago"
+            timerLbl.Text = diff < 60 and diff .. "s" or math.floor(diff/60) .. "m"
+            if AUTO_CLEAR and pName ~= "SYSTEM" and pName ~= "WORLD" and diff >= LOG_LIFESPAN then
+                logEntry:Destroy()
+                break
+            end
             task.wait(1)
         end
     end)
-    if pName ~= "SYSTEM" and pName ~= "WORLD" then
-        task.spawn(function()
-            while logEntry and logEntry.Parent do
-                task.wait(1)
-                if AUTO_CLEAR and (tick() - createdAt) >= LOG_LIFESPAN then
-                    local t = TweenService:Create(detailLbl, TweenInfo.new(1), {TextTransparency = 1})
-                    TweenService:Create(statusLbl, TweenInfo.new(1), {TextTransparency = 1}):Play()
-                    TweenService:Create(pIcon, TweenInfo.new(1), {ImageTransparency = 1}):Play()
-                    TweenService:Create(aIcon, TweenInfo.new(1), {ImageTransparency = 1}):Play()
-                    TweenService:Create(timerLbl, TweenInfo.new(1), {TextTransparency = 1}):Play()
-                    t:Play()
-                    t.Completed:Connect(function() if logEntry.Parent then logEntry:Destroy() end end)
-                    break
-                end
-            end
-        end)
-    end
     return logEntry
 end
 
