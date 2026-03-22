@@ -1490,7 +1490,6 @@ local function StartDropProcess()
         isDropping = false 
         ToggleBtn.Text = "START DROP"
         ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 220, 150)
-		ToggleBtn.Font = Enum.Font.Code
         return 
     end
 
@@ -1558,7 +1557,6 @@ local function StartDropProcess()
         isDropping = false
         ToggleBtn.Text = "START DROP"
         ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 220, 150)
-		ToggleBtn.Font = Enum.Font.Code
     end)
 end
 
@@ -1924,7 +1922,6 @@ ToggleBtn.MouseButton1Click:Connect(function()
         -- SPAMMER IS NOW ON (Show Red to Stop)
         ToggleBtn.Text = "STOP SPAMMER"
         ToggleBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50) -- RED
-        ToggleBtn.Font = Enum.Font.Code
         
         StatusVal.Text = "RUNNING"
         StatusVal.TextColor3 = Color3.fromRGB(255,255,255) -- Reddish status
@@ -1932,7 +1929,6 @@ ToggleBtn.MouseButton1Click:Connect(function()
         -- SPAMMER IS NOW OFF (Show Green to Start)
         ToggleBtn.Text = "START SPAMMER"
         ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 220, 150) -- GREEN
-        ToggleBtn.Font = Enum.Font.Code
         
         StatusVal.Text = "READY"
         StatusVal.TextColor3 = Color3.fromRGB(255,255,255) -- Greenish status
