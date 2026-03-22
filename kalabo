@@ -740,7 +740,7 @@ local Features = {
     {"AUTO-LEAVE", "AutoLeave"},
     {"AUTO-WARN", "AutoWarn"},
     {"SKIN-CHANGER", "SkinChanger"},
-    {"INSTANT-PULL", "AutoPull"}
+    {"INSTANT-PULL", "AutoPull"},
     {"FPS-BOOST", "FPSBoost"},
 }
 
