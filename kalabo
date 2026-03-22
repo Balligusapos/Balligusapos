@@ -1127,98 +1127,128 @@ ScreenGui.IgnoreGuiInset = true
 
 local Main = Instance.new("Frame", ScreenGui)
 Main.Name = "MainFrame"
-Main.Position = UDim2.new(0.5, -95, 0.4, 0)
-Main.Size = UDim2.new(0, 190, 0, 370) 
+Main.Position = UDim2.new(0.5, -85, 0.4, 0)
+Main.Size = UDim2.new(0, 170, 0, 310) -- Compacted size
 Main.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
 Main.BorderSizePixel = 0
 Main.Active = true
 Main.Draggable = true
+Main.ClipsDescendants = true -- Para sa minimize
 Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
 Instance.new("UIStroke", Main).Color = Color3.fromRGB(45, 45, 45)
 
--- Decorative Icon
-local MainIcon = Instance.new("ImageLabel", Main)
-MainIcon.Size = UDim2.new(0, 30, 0, 30) 
+-- Decorative Icon (Ginawang ImageButton para sa Minimize)
+local MainIcon = Instance.new("ImageButton", Main)
+MainIcon.Size = UDim2.new(0, 25, 0, 25) 
 MainIcon.AnchorPoint = Vector2.new(0.5, 0.5)
-MainIcon.Position = UDim2.new(0, 25, 0, 20)
+MainIcon.Position = UDim2.new(0, 22, 0, 18)
 MainIcon.BackgroundTransparency = 1
 MainIcon.Image = "rbxthumb://type=Asset&id=10820259764&w=150&h=150"
+MainIcon.ZIndex = 5
 
 task.spawn(function()
     local t = 0
+    local origPos = MainIcon.Position
     while MainIcon and MainIcon.Parent do
         t = t + 0.05
         MainIcon.Rotation = math.sin(t * 2) * 15
         local s = 0.9 + (math.sin(t * 1.5) * 0.1)
-        MainIcon.Size = UDim2.new(0, 30 * s, 0, 30 * s)
+        MainIcon.Size = UDim2.new(0, 25 * s, 0, 25 * s)
+        
+        -- Shake Logic
+        if math.floor(t * 20) % 50 == 0 then
+            for i = 1, 6 do
+                MainIcon.Position = origPos + UDim2.new(0, math.random(-2,2), 0, math.random(-2,2))
+                task.wait(0.04)
+            end
+            MainIcon.Position = origPos
+        end
         task.wait(0.01)
     end
 end)
 
 local Title = Instance.new("TextLabel", Main)
-Title.Size = UDim2.new(1, -50, 0, 40)
-Title.Position = UDim2.new(0, 45, 0, 0) 
+Title.Size = UDim2.new(1, -50, 0, 38)
+Title.Position = UDim2.new(0, 42, 0, 0) 
 Title.Text = "DROP MANAGER [CSN]"
 Title.TextColor3 = Color3.new(1,1,1)
 Title.Font = Enum.Font.GothamBold
-Title.TextSize = 11
+Title.TextSize = 9
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.BackgroundTransparency = 1
 
 local ItemDisplay = Instance.new("TextLabel", Main)
-ItemDisplay.Size = UDim2.new(1, -20, 0, 30)
-ItemDisplay.Position = UDim2.new(0, 10, 0, 45)
+ItemDisplay.Size = UDim2.new(1, -20, 0, 25)
+ItemDisplay.Position = UDim2.new(0, 10, 0, 42)
 ItemDisplay.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
 ItemDisplay.Text = "Holding: None"
 ItemDisplay.TextColor3 = Color3.fromRGB(255, 200, 0)
 ItemDisplay.Font = Enum.Font.GothamBold
-ItemDisplay.TextSize = 11
+ItemDisplay.TextSize = 10
 ItemDisplay.BorderSizePixel = 0
 Instance.new("UICorner", ItemDisplay).CornerRadius = UDim.new(0, 6)
 
 local AmountInput = Instance.new("TextBox", Main)
-AmountInput.Size = UDim2.new(1, -20, 0, 30)
-AmountInput.Position = UDim2.new(0, 10, 0, 80)
-AmountInput.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
+AmountInput.Size = UDim2.new(1, -20, 0, 28)
+AmountInput.Position = UDim2.new(0, 10, 0, 72)
+AmountInput.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
 AmountInput.Text = "0"
 AmountInput.PlaceholderText = "Amount"
 AmountInput.TextColor3 = Color3.new(1,1,1)
 AmountInput.Font = Enum.Font.GothamBold
-AmountInput.TextSize = 14
+AmountInput.TextSize = 12
 Instance.new("UICorner", AmountInput).CornerRadius = UDim.new(0, 6)
 
--- SHIFTED UP: Start Button
 local ToggleBtn = Instance.new("TextButton", Main)
-ToggleBtn.Size = UDim2.new(1, -20, 0, 35)
-ToggleBtn.Position = UDim2.new(0, 10, 0, 115) -- Moved up from 150
+ToggleBtn.Size = UDim2.new(1, -20, 0, 32)
+ToggleBtn.Position = UDim2.new(0, 10, 0, 105)
 ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 220, 150)
 ToggleBtn.Text = "START MULTI-DROP"
 ToggleBtn.TextColor3 = Color3.fromRGB(15, 15, 15)
 ToggleBtn.Font = Enum.Font.GothamBold
-ToggleBtn.TextSize = 12
+ToggleBtn.TextSize = 11
 Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 6)
 
--- SHIFTED UP: Silent Button
 local SilentBtn = Instance.new("TextButton", Main)
-SilentBtn.Size = UDim2.new(1, -20, 0, 25)
-SilentBtn.Position = UDim2.new(0, 10, 0, 155) -- Moved up from 190
+SilentBtn.Size = UDim2.new(1, -20, 0, 22)
+SilentBtn.Position = UDim2.new(0, 10, 0, 142)
 SilentBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
 SilentBtn.Text = "SHOW UI: ON"
 SilentBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
 SilentBtn.Font = Enum.Font.GothamBold
-SilentBtn.TextSize = 10
+SilentBtn.TextSize = 9
 Instance.new("UICorner", SilentBtn).CornerRadius = UDim.new(0, 4)
 
--- EXPANDED: Scroll Frame
+-- [[ 3. SCROLL FRAME (FIXED: NO MORE BLOCK) ]] --
 local ScrollFrame = Instance.new("ScrollingFrame", Main)
-ScrollFrame.Position = UDim2.new(0, 5, 0, 190) -- Moved up from 225
-ScrollFrame.Size = UDim2.new(1, -10, 1, -200) -- Size adjusted to fit bottom
+ScrollFrame.Name = "ScrollFrame"
+ScrollFrame.Position = UDim2.new(0, 5, 0, 175) 
+-- Ginawa nating -210 ang offset para magkasya yung 3 boxes bago ang InfoLabel
+ScrollFrame.Size = UDim2.new(1, -10, 1, -200) 
 ScrollFrame.BackgroundTransparency = 1
-ScrollFrame.ScrollBarThickness = 0 
+ScrollFrame.ScrollBarThickness = 0 -- Tinanggal ang bar para malinis
+ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0) -- Hahayaan ang AutomaticSize
 ScrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+ScrollFrame.ScrollingEnabled = true
+ScrollFrame.ClipsDescendants = true
+
 local Grid = Instance.new("UIGridLayout", ScrollFrame)
-Grid.CellSize = UDim2.new(1, -10, 0, 50) 
-Grid.CellPadding = UDim2.new(0, 0, 0, 5)
+-- Ginawang 35 ang height (mula 40) para siguradong lilitaw lahat
+Grid.CellSize = UDim2.new(1, -10, 0, 35) 
+Grid.CellPadding = UDim2.new(0, 0, 0, 4)
+
+-- [[ 4. INFO LABEL (FIXED: MOVED UP) ]] --
+local InfoLabel = Instance.new("TextLabel", Main)
+InfoLabel.Name = "InfoLabel"
+InfoLabel.Size = UDim2.new(1, -20, 0, 20)
+-- Nilipat sa -25 para hindi siya masyadong dikit sa kanto ng frame
+InfoLabel.Position = UDim2.new(0, 10, 1, -25) 
+InfoLabel.BackgroundTransparency = 1
+InfoLabel.Text = "USE: /di [amount] TO DROP"
+InfoLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+InfoLabel.Font = Enum.Font.GothamSemibold
+InfoLabel.TextSize = 8 -- Ginawang 8 para mas compact
+InfoLabel.ZIndex = 10
 
 --- [[ LOGIC CORE VARS ]] ---
 local LockedId = nil
@@ -1232,27 +1262,27 @@ local function CreateResultBox(name, iconId, color)
     Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
     Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 6)
     local Icon = Instance.new("ImageLabel", Frame)
-    Icon.Size = UDim2.new(0, 18, 0, 18)
-    Icon.Position = UDim2.new(0, 10, 0, 5)
+    Icon.Size = UDim2.new(0, 16, 0, 16)
+    Icon.Position = UDim2.new(0, 10, 0, 4)
     Icon.BackgroundTransparency = 1
     Icon.Image = "rbxassetid://" .. iconId
     Icon.ImageColor3 = color
     local Lbl = Instance.new("TextLabel", Frame)
-    Lbl.Size = UDim2.new(1, -40, 0, 20)
+    Lbl.Size = UDim2.new(1, -40, 0, 15)
     Lbl.Position = UDim2.new(0, 35, 0, 2)
     Lbl.Text = name
-    Lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
+    Lbl.TextColor3 = Color3.fromRGB(180, 180, 180)
     Lbl.Font = Enum.Font.GothamBold
-    Lbl.TextSize = 8
+    Lbl.TextSize = 7
     Lbl.BackgroundTransparency = 1
     Lbl.TextXAlignment = Enum.TextXAlignment.Left
     local ValDisp = Instance.new("TextLabel", Frame)
-    ValDisp.Size = UDim2.new(1, -40, 0, 20)
-    ValDisp.Position = UDim2.new(0, 35, 1, -25)
+    ValDisp.Size = UDim2.new(1, -40, 0, 18)
+    ValDisp.Position = UDim2.new(0, 35, 1, -22)
     ValDisp.Text = "0"
     ValDisp.TextColor3 = color
     ValDisp.Font = Enum.Font.GothamBold
-    ValDisp.TextSize = 14
+    ValDisp.TextSize = 12
     ValDisp.BackgroundTransparency = 1
     ValDisp.TextXAlignment = Enum.TextXAlignment.Left
     return ValDisp
@@ -1507,15 +1537,33 @@ else
     LocalPlayer.Chatted:Connect(ProcessCommand)
 end
 
--- UI Info Label
-local InfoLabel = Instance.new("TextLabel", Main)
-InfoLabel.Size = UDim2.new(1, -20, 0, 20)
-InfoLabel.Position = UDim2.new(0, 10, 1, -25)
-InfoLabel.BackgroundTransparency = 1
-InfoLabel.Text = "USE: /di [amount] TO DROP"
-InfoLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-InfoLabel.Font = Enum.Font.GothamSemibold
-InfoLabel.TextSize = 9
+-- [[ MINIMIZE LOGIC (FIXED) ]] --
+local isMinimized = false
+
+MainIcon.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized
+    
+    -- Size Goal: 38 (Header lang) o 310 (Full UI)
+    local goalSize = isMinimized and UDim2.new(0, 170, 0, 38) or UDim2.new(0, 170, 0, 310)
+    
+    -- Visibility State: Itatago lahat pag minimized
+    local show = not isMinimized
+    
+    -- I-apply ang Visibility sa lahat ng main components
+    ItemDisplay.Visible = show
+    AmountInput.Visible = show
+    ToggleBtn.Visible = show
+    SilentBtn.Visible = show
+    ScrollFrame.Visible = show
+    InfoLabel.Visible = show
+    
+    -- Tween Animation para sa smooth na pag-liit/laki
+    game:GetService("TweenService"):Create(
+        Main, 
+        TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), 
+        {Size = goalSize}
+    ):Play()
+end)
 
 --DROPPER--
 
@@ -1542,7 +1590,15 @@ local Suffixes = {
     "S", "T", "U", "V", "W", "X", "Y", "Z"
 }
 
--- // MAIN UI SETUP //
+-- [[ 1. MAIN UI SETUP ]] --
+local CoreGui = game:GetService("CoreGui")
+local TweenService = game:GetService("TweenService")
+
+-- Cleanup old UI
+if CoreGui:FindFirstChild("SmartSpammerCSN") then
+    CoreGui.SmartSpammerCSN:Destroy()
+end
+
 local ScreenGui = Instance.new("ScreenGui", CoreGui)
 ScreenGui.Name = "SmartSpammerCSN"
 ScreenGui.ResetOnSpawn = false
@@ -1550,151 +1606,175 @@ ScreenGui.IgnoreGuiInset = true
 
 local Main = Instance.new("Frame", ScreenGui)
 Main.Name = "MainFrame"
-Main.Position = UDim2.new(0.5, -95, 0.4, 0)
-Main.Size = UDim2.new(0, 190, 0, 320) 
-Main.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+Main.Position = UDim2.new(0.5, -75, 0.4, 0)
+Main.Size = UDim2.new(0, 150, 0, 230) -- ULTRA SMALL (From 170x285 to 150x230)
+Main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 Main.BorderSizePixel = 0
 Main.Active = true
 Main.Draggable = true
-Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
-Instance.new("UIStroke", Main).Color = Color3.fromRGB(45, 45, 45)
+Main.ClipsDescendants = true
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 8)
 
--- // Animated Icon (Clock Tick Fix) //
-local MainIcon = Instance.new("ImageLabel", Main)
-MainIcon.Size = UDim2.new(0, 28, 0, 28) 
-MainIcon.Position = UDim2.new(0, 10, 0, 6)
+local MainStroke = Instance.new("UIStroke", Main)
+MainStroke.Color = Color3.fromRGB(45, 45, 45)
+MainStroke.Thickness = 1.2
+
+-- // Animated Icon (Slow 360 Spin) //
+local MainIcon = Instance.new("ImageButton", Main)
+MainIcon.Size = UDim2.new(0, 20, 0, 20) -- Shrunk
+MainIcon.Position = UDim2.new(0, 8, 0, 6)
 MainIcon.BackgroundTransparency = 1
 MainIcon.Image = "rbxthumb://type=Asset&id=4764219467&w=150&h=150"
+MainIcon.ZIndex = 5
 
--- To make it "tick", we use a very fast transition (0.1s) every 1 second
 task.spawn(function()
-    while true do
-        -- Tick Big
-        TweenService:Create(MainIcon, TweenInfo.new(0.1, Enum.EasingStyle.Back), {
-            Size = UDim2.new(0, 32, 0, 32),
-            Position = UDim2.new(0, 8, 0, 4)
-        }):Play()
-        
-        task.wait(0.5) -- Duration of the "pulse"
-        
-        -- Tick Small
-        TweenService:Create(MainIcon, TweenInfo.new(0.1, Enum.EasingStyle.Quad), {
-            Size = UDim2.new(0, 28, 0, 28),
-            Position = UDim2.new(0, 10, 0, 6)
-        }):Play()
-        
-        task.wait(0.5) -- Wait for the next second
+    while MainIcon and MainIcon.Parent do
+        local tween = TweenService:Create(MainIcon, TweenInfo.new(4, Enum.EasingStyle.Linear), {Rotation = MainIcon.Rotation + 360})
+        tween:Play()
+        tween.Completed:Wait()
     end
 end)
 
--- Title
+-- Title with Silver Gradient (TAX MODE Style)
 local Title = Instance.new("TextLabel", Main)
-Title.Size = UDim2.new(1, -50, 0, 40)
-Title.Position = UDim2.new(0, 45, 0, 0) 
-Title.Text = "AUTO SPAMMER [CSN]"
+Title.Size = UDim2.new(1, -40, 0, 32)
+Title.Position = UDim2.new(0, 35, 0, 0) 
+Title.Text = "TAX MODE [CSN]"
 Title.TextColor3 = Color3.new(1,1,1)
 Title.Font = Enum.Font.GothamBold
-Title.TextSize = 10
+Title.TextSize = 8 -- Shrunk
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.BackgroundTransparency = 1
 
+local TitleGrad = Instance.new("UIGradient", Title)
+TitleGrad.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(150, 150, 150)),
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 150, 150))
+})
+
 local Underline = Instance.new("Frame", Main)
-Underline.Size = UDim2.new(1, -20, 0, 1)
-Underline.Position = UDim2.new(0, 10, 0, 35)
+Underline.Size = UDim2.new(1, -16, 0, 1)
+Underline.Position = UDim2.new(0, 8, 0, 30)
 Underline.BackgroundColor3 = Color3.new(1,1,1)
 Underline.BorderSizePixel = 0
-Underline.BackgroundTransparency = 0.8
+Underline.BackgroundTransparency = 0.9
 
--- Inputs
+-- Helper for Inputs
+local function StyleInput(obj)
+    Instance.new("UICorner", obj).CornerRadius = UDim.new(0, 5)
+    local s = Instance.new("UIStroke", obj)
+    s.Color = Color3.fromRGB(40, 40, 40)
+    s.Thickness = 1
+end
+
+-- Inputs (Positioned Tight)
 local MsgInput = Instance.new("TextBox", Main)
-MsgInput.Size = UDim2.new(1, -20, 0, 30)
-MsgInput.Position = UDim2.new(0, 10, 0, 45)
-MsgInput.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
-MsgInput.Text = Config.Message
+MsgInput.Size = UDim2.new(1, -16, 0, 24) -- Shrunk Height
+MsgInput.Position = UDim2.new(0, 8, 0, 38)
+MsgInput.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+MsgInput.Text = Config.Message or "Message"
 MsgInput.TextColor3 = Color3.fromRGB(255, 200, 0)
 MsgInput.Font = Enum.Font.GothamBold
-MsgInput.TextSize = 12
-Instance.new("UICorner", MsgInput).CornerRadius = UDim.new(0, 6)
-Instance.new("UIStroke", MsgInput).Color = Color3.fromRGB(45, 45, 45)
+MsgInput.TextSize = 9
+MsgInput.ClearTextOnFocus = false
+StyleInput(MsgInput)
 MsgInput.FocusLost:Connect(function() Config.Message = MsgInput.Text end)
 
 local TimerInput = Instance.new("TextBox", Main)
-TimerInput.Size = UDim2.new(1, -20, 0, 30)
-TimerInput.Position = UDim2.new(0, 10, 0, 80)
-TimerInput.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
-TimerInput.PlaceholderText = "Wait Time (sec)"
+TimerInput.Size = UDim2.new(1, -16, 0, 24) -- Shrunk Height
+TimerInput.Position = UDim2.new(0, 8, 0, 68)
+TimerInput.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+TimerInput.PlaceholderText = "Wait Time"
 TimerInput.Text = tostring(Config.Cooldown)
 TimerInput.TextColor3 = Color3.new(1,1,1)
 TimerInput.Font = Enum.Font.GothamBold
-TimerInput.TextSize = 14
-Instance.new("UICorner", TimerInput).CornerRadius = UDim.new(0, 6)
-Instance.new("UIStroke", TimerInput).Color = Color3.fromRGB(45, 45, 45)
+TimerInput.TextSize = 10
+StyleInput(TimerInput)
 TimerInput.FocusLost:Connect(function() 
     local v = tonumber(TimerInput.Text)
     if v then Config.Cooldown = v else TimerInput.Text = tostring(Config.Cooldown) end
 end)
 
+-- Main Button (Small & Clean)
 local ToggleBtn = Instance.new("TextButton", Main)
-ToggleBtn.Size = UDim2.new(1, -20, 0, 30)
-ToggleBtn.Position = UDim2.new(0, 10, 0, 115)
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 220, 150)
+ToggleBtn.Size = UDim2.new(1, -16, 0, 28)
+ToggleBtn.Position = UDim2.new(0, 8, 0, 98)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 ToggleBtn.Text = "START SPAMMER"
-ToggleBtn.TextColor3 = Color3.fromRGB(0,0,0)
+ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
 ToggleBtn.Font = Enum.Font.GothamBold
-ToggleBtn.TextSize = 12
-Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 6)
+ToggleBtn.TextSize = 10
+ToggleBtn.BorderSizePixel = 0
+Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 5)
 
--- Results/Indicator Section
+-- Results Section (Compact)
 local ScrollFrame = Instance.new("ScrollingFrame", Main)
-ScrollFrame.Position = UDim2.new(0, 5, 0, 155)
-ScrollFrame.Size = UDim2.new(1, -10, 1, -165)
+ScrollFrame.Position = UDim2.new(0, 4, 0, 132)
+ScrollFrame.Size = UDim2.new(1, -8, 1, -138)
 ScrollFrame.BackgroundTransparency = 1
 ScrollFrame.ScrollBarThickness = 0 
 ScrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
 
 local Grid = Instance.new("UIGridLayout", ScrollFrame)
-Grid.CellSize = UDim2.new(1, -10, 0, 55)
-Grid.CellPadding = UDim2.new(0, 0, 0, 8)
-Grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
+Grid.CellSize = UDim2.new(1, -4, 0, 38) -- Smaller cells
+Grid.CellPadding = UDim2.new(0, 0, 0, 4)
 
 local function CreateResultBox(name, iconId, color)
     local Frame = Instance.new("Frame", ScrollFrame)
-    Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 6)
-    Instance.new("UIStroke", Frame).Color = Color3.fromRGB(40, 40, 40)
-
+    Frame.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+    Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 5)
+    local s = Instance.new("UIStroke", Frame)
+    s.Color = Color3.fromRGB(35, 35, 35)
+    
     local Icon = Instance.new("ImageLabel", Frame)
-    Icon.Size = UDim2.new(0, 18, 0, 18)
-    Icon.Position = UDim2.new(0, 10, 0, 8)
+    Icon.Size = UDim2.new(0, 14, 0, 14)
+    Icon.Position = UDim2.new(0, 6, 0, 4)
     Icon.BackgroundTransparency = 1
     Icon.Image = "rbxassetid://" .. iconId
     Icon.ImageColor3 = color
 
     local Lbl = Instance.new("TextLabel", Frame)
-    Lbl.Size = UDim2.new(1, -40, 0, 20)
-    Lbl.Position = UDim2.new(0, 35, 0, 8)
+    Lbl.Size = UDim2.new(1, -30, 0, 12)
+    Lbl.Position = UDim2.new(0, 26, 0, 4)
     Lbl.Text = name
-    Lbl.TextColor3 = Color3.fromRGB(200, 200, 200)
+    Lbl.TextColor3 = Color3.fromRGB(130, 130, 130)
     Lbl.Font = Enum.Font.GothamBold
-    Lbl.TextSize = 10
+    Lbl.TextSize = 7
     Lbl.BackgroundTransparency = 1
     Lbl.TextXAlignment = Enum.TextXAlignment.Left
 
     local ValDisp = Instance.new("TextLabel", Frame)
-    ValDisp.Size = UDim2.new(1, -40, 0, 20)
-    ValDisp.Position = UDim2.new(0, 35, 1, -25)
+    ValDisp.Size = UDim2.new(1, -30, 0, 16)
+    ValDisp.Position = UDim2.new(0, 26, 1, -20)
     ValDisp.Text = "0"
     ValDisp.TextColor3 = color
     ValDisp.Font = Enum.Font.GothamBold
-    ValDisp.TextSize = 16
+    ValDisp.TextSize = 11
     ValDisp.BackgroundTransparency = 1
     ValDisp.TextXAlignment = Enum.TextXAlignment.Left
 
     return ValDisp
 end
 
-local StatusVal = CreateResultBox("SPAMMER STATUS", "6034287525", Color3.fromRGB(100, 200, 255))
-local TimerVal = CreateResultBox("NEXT CHAT IN", "6031225818", Color3.fromRGB(100, 255, 100))
+local StatusVal = CreateResultBox("STATUS", "6034287525", Color3.fromRGB(100, 200, 255))
+local TimerVal = CreateResultBox("COOLDOWN", "6031225818", Color3.fromRGB(100, 255, 100))
+
+-- [[ MINIMIZE LOGIC ]] --
+local isMinimized = false
+MainIcon.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized
+    local goal = isMinimized and UDim2.new(0, 150, 0, 32) or UDim2.new(0, 150, 0, 230)
+    
+    local show = not isMinimized
+    Underline.Visible = show
+    MsgInput.Visible = show
+    TimerInput.Visible = show
+    ToggleBtn.Visible = show
+    ScrollFrame.Visible = show
+    
+    TweenService:Create(Main, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = goal}):Play()
+end)
 
 -- // LOGIC //
 ToggleBtn.MouseButton1Click:Connect(function()
