@@ -1310,7 +1310,7 @@ local ToggleBtn = Instance.new("TextButton", Content)
 ToggleBtn.Size = UDim2.new(1, -16, 0, 28)
 ToggleBtn.Position = UDim2.new(0, 8, 0, 62)
 ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 220, 150)
-ToggleBtn.Text = "START DROP"
+ToggleBtn.Text = "START DROPPING"
 ToggleBtn.TextColor3 = Color3.fromRGB(12, 12, 12)
 ToggleBtn.Font = Enum.Font.Code
 ToggleBtn.TextSize = 10
@@ -1483,7 +1483,7 @@ end)
 local function StartDropProcess()
     if isDropping then 
         isDropping = false 
-        ToggleBtn.Text = "START MULTI-DROP"
+        ToggleBtn.Text = "START DROPPING"
         ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 220, 150)
         return 
     end
@@ -1502,7 +1502,7 @@ local function StartDropProcess()
     SessionDroppedCount = 0 
     
     ToggleBtn.Text = "STOP DROPPING"
-    ToggleBtn.BackgroundColor3 = Color3.fromRGB(220, 50, 50)
+    ToggleBtn.BackgroundColor3 = Color3.fromRGB(220, 80, 80)
 
     task.spawn(function()
         while isDropping do
@@ -1550,7 +1550,7 @@ local function StartDropProcess()
         
         table.clear(SlotLocks) 
         isDropping = false
-        ToggleBtn.Text = "START MULTI-DROP"
+        ToggleBtn.Text = "START DROPPING"
         ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 220, 150)
     end)
 end
@@ -1600,9 +1600,18 @@ end)
 ToggleBtn.MouseButton1Click:Connect(StartDropProcess)
 
 SilentBtn.MouseButton1Click:Connect(function()
+    -- 1. Flip the state (True becomes False, False becomes True)
     SilentMode = not SilentMode
-    SilentBtn.Text = SilentMode and "SHOW UI: OFF" or "SHOW UI: ON"
-    SilentBtn.TextColor3 = SilentMode and Color3.fromRGB(0,0,0) or Color3.fromRGB(0,0,0)
+    
+    if SilentMode then
+        -- [[ IF ON ]]
+        SilentBtn.Text = "SHOW UI: OFF" -- (Meaning Silent is Active)
+        SilentBtn.BackgroundColor3 = Color3.fromRGB(0, 220, 150) -- Green
+    else
+        -- [[ IF OFF ]]
+        SilentBtn.Text = "SHOW UI: ON" -- (Meaning Silent is Inactive)
+        SilentBtn.BackgroundColor3 = Color3.fromRGB(220, 80, 80) -- Red
+    end
 end)
 
 -- [[ REFINED SILENT MODE ]] --
@@ -1916,7 +1925,7 @@ ToggleBtn.MouseButton1Click:Connect(function()
     if Config.Enabled then
         -- SPAMMER IS NOW ON (Show Red to Stop)
         ToggleBtn.Text = "STOP SPAMMER"
-        ToggleBtn.BackgroundColor3 = Color3.fromRGB(150, 50, 50) -- RED
+        ToggleBtn.BackgroundColor3 = Color3.fromRGB(220, 80, 80) -- RED
         
         StatusVal.Text = "RUNNING"
         StatusVal.TextColor3 = Color3.fromRGB(255,255,255) -- Reddish status
