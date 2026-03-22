@@ -518,153 +518,162 @@ end
     end
 end)
 
-local ScreenGui = Instance.new("ScreenGui", Player.PlayerGui)
-ScreenGui.Name = "CraftAWorldClient"
-ScreenGui.ResetOnSpawn = false
+-- [[ ERIK JOSHUA C. ARNEDO - CAW CLIENT V2 (FIXED & COMPACT) ]]
 
+local Players = game:GetService("Players")
+local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Player = Players.LocalPlayer
+
+-- [[ UI ROOT ]]
+local ScreenGui = Instance.new("ScreenGui", Player.PlayerGui)
+ScreenGui.Name = "CAW_Client_V2"
+ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+-- [[ MAIN FRAME ]]
 local Main = Instance.new("Frame", ScreenGui)
 Main.Name = "MainFrame"
-Main.Position = UDim2.new(0.5, -95, 0.4, 0)
-Main.Size = UDim2.new(0, 190, 0, 280)
-Main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
+Main.Position = UDim2.new(0.5, -85, 0.2, 0)
+Main.Size = UDim2.new(0, 170, 0, 240)
+Main.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
 Main.BorderSizePixel = 0
 Main.Active = true
-Main.Draggable = true
+Main.ClipsDescendants = true 
 
 local Corner = Instance.new("UICorner", Main)
-Corner.CornerRadius = UDim.new(0, 10)
+Corner.CornerRadius = UDim.new(0, 8)
 
-local TweenService = game:GetService("TweenService")
+-- [[ MINIMIZE STATE ]]
+local isMinimized = false
+local FullSize = UDim2.new(0, 170, 0, 240)
+local MinSize = UDim2.new(0, 170, 0, 35)
 
--- 1. Setup the Icon
-local MainIcon = Instance.new("ImageLabel", Main)
+-- [[ HEADER ICON ]]
+local MainIcon = Instance.new("ImageButton", Main)
 MainIcon.Name = "MainIcon"
-MainIcon.Size = UDim2.new(0, 28, 0, 28) 
-MainIcon.Position = UDim2.new(0, 10, 0, 6)
+MainIcon.Size = UDim2.new(0, 22, 0, 22) 
+MainIcon.Position = UDim2.new(0, 8, 0, 6)
 MainIcon.BackgroundTransparency = 1
-MainIcon.ScaleType = Enum.ScaleType.Fit
+MainIcon.Image = "rbxthumb://type=Asset&id=84894744927863&w=150&h=150"
 
--- 2. Icon Table
+-- Icon Logic (Breathing & Changing)
 local IconList = {
     "rbxthumb://type=Asset&id=84894744927863&w=150&h=150",
     "rbxthumb://type=Asset&id=10955300180&w=150&h=150",
-    "rbxthumb://type=Asset&id=113103683003277&w=150&h=150",
-    "rbxthumb://type=Asset&id=11886910029&w=150&h=150",
+    "rbxthumb://type=Asset&id=113103683003277&w=150&h=150"
 }
 
--- 3. Animation Configuration
-local expandedSize = UDim2.new(0, 32, 0, 32)
-local expandedPos = UDim2.new(0, 8, 0, 4)
-
-local breathTween = game:GetService("TweenService"):Create(MainIcon, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
-    Size = expandedSize,
-    Position = expandedPos
-})
-breathTween:Play()
-
--- 4. Random Swapping Loop
 task.spawn(function()
-    local lastIndex = nil
+    local tInfo = TweenInfo.new(1.2, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true)
+    TweenService:Create(MainIcon, tInfo, {Size = UDim2.new(0, 26, 0, 26), Position = UDim2.new(0, 6, 0, 4)}):Play()
     
     while true do
-        local randomIndex
-        
-        -- Pick a random index that isn't the same as the last one
-        repeat
-            randomIndex = math.random(1, #IconList)
-        until randomIndex ~= lastIndex
-        
-        lastIndex = randomIndex
-        MainIcon.Image = IconList[randomIndex]
-        
-        task.wait(1) -- Change every 1 second
+        MainIcon.Image = IconList[math.random(1, #IconList)]
+        task.wait(1.5)
     end
 end)
 
--- 2. Silver Animated Title
+-- [[ SILVER TITLE ]]
 local Title = Instance.new("TextLabel", Main)
-Title.Size = UDim2.new(1, -50, 0, 40)
-Title.Position = UDim2.new(0, 45, 0, 0) 
-Title.Text = "CRAFT A WORLD [CLIENT]"
+Title.Size = UDim2.new(1, -40, 0, 35)
+Title.Position = UDim2.new(0, 38, 0, 0) 
+Title.Text = "CAW CLIENT [CSN]"
 Title.TextColor3 = Color3.fromRGB(255, 255, 255)
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 10.5
+Title.Font = Enum.Font.Code -- Matches your pixel image
+Title.TextSize = 11
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.BackgroundTransparency = 1
 
-local Gradient = Instance.new("UIGradient", Title)
-Gradient.Color = ColorSequence.new({
+local Grad = Instance.new("UIGradient", Title)
+Grad.Color = ColorSequence.new({
     ColorSequenceKeypoint.new(0, Color3.fromRGB(140, 140, 140)),
     ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)),
     ColorSequenceKeypoint.new(1, Color3.fromRGB(140, 140, 140))
 })
 
-local Underline = Instance.new("Frame", Main)
-Underline.Size = UDim2.new(1, -20, 0, 1)
-Underline.Position = UDim2.new(0, 10, 0, 35)
-Underline.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-Underline.BorderSizePixel = 0
-local UnderlineGrad = Gradient:Clone()
-UnderlineGrad.Parent = Underline
-
-task.spawn(function()
-    local info = TweenInfo.new(3, Enum.EasingStyle.Linear, Enum.EasingDirection.InOut, -1)
-    Gradient.Offset = Vector2.new(-1, 0)
-    UnderlineGrad.Offset = Vector2.new(-1, 0)
-    TweenService:Create(Gradient, info, {Offset = Vector2.new(1, 0)}):Play()
-    TweenService:Create(UnderlineGrad, info, {Offset = Vector2.new(1, 0)}):Play()
+RunService.RenderStepped:Connect(function()
+    Grad.Offset = Vector2.new(math.sin(tick() * 2) * 0.5, 0)
 end)
 
--- Scrolling Container
-local ScrollFrame = Instance.new("ScrollingFrame", Main)
-ScrollFrame.Position = UDim2.new(0, 5, 0, 45)
-ScrollFrame.Size = UDim2.new(1, -10, 1, -55)
-ScrollFrame.BackgroundTransparency = 1
-ScrollFrame.ScrollBarThickness = 0 
-ScrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
-ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
+-- [[ MINIMIZE FUNCTION ]]
+MainIcon.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized
+    local targetSize = isMinimized and MinSize or FullSize
+    TweenService:Create(Main, TweenInfo.new(0.3, Enum.EasingStyle.Quart), {Size = targetSize}):Play()
+end)
 
-local Grid = Instance.new("UIGridLayout", ScrollFrame)
-Grid.CellSize = UDim2.new(0, 87, 0, 55)
-Grid.CellPadding = UDim2.new(0, 6, 0, 6)
+-- [[ DRAGGING (MOBILE FIX) ]]
+local dragging, dragStart, startPos
+Main.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = Main.Position
+    end
+end)
+
+UserInputService.InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
+end)
+
+-- [[ SCROLLING CONTAINER ]]
+local Scroll = Instance.new("ScrollingFrame", Main)
+Scroll.Name = "Container"
+Scroll.Position = UDim2.new(0, 5, 0, 40)
+Scroll.Size = UDim2.new(1, -10, 1, -50)
+Scroll.BackgroundTransparency = 1
+Scroll.ScrollBarThickness = 0
+Scroll.AutomaticCanvasSize = Enum.AutomaticSize.Y
+
+local Grid = Instance.new("UIGridLayout", Scroll)
+Grid.CellSize = UDim2.new(0, 75, 0, 42)
+Grid.CellPadding = UDim2.new(0, 5, 0, 5)
 Grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
+-- [[ SAME FUNC AS YOUR ORIGINAL ]]
 local function CreateToggle(name, var)
-    local Frame = Instance.new("Frame", ScrollFrame)
-    Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 6)
+    local Frame = Instance.new("Frame", Scroll)
+    Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
+    Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 5)
     
     local Label = Instance.new("TextLabel", Frame)
-    Label.Size = UDim2.new(1, 0, 0, 24)
-    Label.Position = UDim2.new(0, 0, 0, 4)
+    Label.Size = UDim2.new(1, 0, 0, 22)
+    Label.Position = UDim2.new(0, 0, 0, 2)
     Label.Text = name
-    Label.TextColor3 = Color3.fromRGB(180, 180, 180)
-    Label.Font = Enum.Font.GothamBold
+    Label.TextColor3 = Color3.fromRGB(150, 150, 150)
+    Label.Font = Enum.Font.Code
     Label.TextSize = 8
-    Label.TextWrapped = true
     Label.BackgroundTransparency = 1
 
-    local Track = Instance.new("TextButton", Frame)
-    Track.Size = UDim2.new(0, 28, 0, 14)
-    Track.Position = UDim2.new(0.5, -14, 1, -18)
-    Track.BackgroundColor3 = Color3.fromRGB(45, 45, 45)
-    Track.Text = ""
-    Track.AutoButtonColor = false
-    Instance.new("UICorner", Track).CornerRadius = UDim.new(1, 0)
+    local Indicator = Instance.new("Frame", Frame)
+    Indicator.Size = UDim2.new(0, 30, 0, 3)
+    Indicator.Position = UDim2.new(0.5, -15, 1, -8)
+    Indicator.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+    Indicator.BorderSizePixel = 0
+    Instance.new("UICorner", Indicator)
 
-    local Knob = Instance.new("Frame", Track)
-    Knob.Size = UDim2.new(0, 10, 0, 10)
-    Knob.Position = UDim2.new(0, 2, 0.5, -5)
-    Knob.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
-    Instance.new("UICorner", Knob).CornerRadius = UDim.new(1, 0)
+    local Track = Instance.new("TextButton", Frame)
+    Track.Size = UDim2.new(1, 0, 1, 0)
+    Track.BackgroundTransparency = 1
+    Track.Text = ""
 
     local function ToggleVisuals(state)
-        local goalPos = state and UDim2.new(1, -12, 0.5, -5) or UDim2.new(0, 2, 0.5, -5)
-        local goalCol = state and Color3.fromRGB(0, 255, 180) or Color3.fromRGB(45, 45, 45)
+        local goalCol = state and Color3.fromRGB(0, 255, 180) or Color3.fromRGB(40, 40, 40)
+        local textCol = state and Color3.new(1,1,1) or Color3.fromRGB(150,150,150)
         
-        TweenService:Create(Knob, TweenInfo.new(0.2), {Position = goalPos}):Play()
-        TweenService:Create(Track, TweenInfo.new(0.2), {BackgroundColor3 = goalCol}):Play()
-        TweenService:Create(Label, TweenInfo.new(0.2), {TextColor3 = state and Color3.new(1,1,1) or Color3.fromRGB(180,180,180)}):Play()
+        TweenService:Create(Indicator, TweenInfo.new(0.2), {BackgroundColor3 = goalCol}):Play()
+        TweenService:Create(Label, TweenInfo.new(0.2), {TextColor3 = textCol}):Play()
     end
 
     Track.MouseButton1Click:Connect(function()
@@ -677,24 +686,32 @@ local function CreateToggle(name, var)
     if Settings[var] then ToggleVisuals(true) end
 end
 
--- Toggles
-CreateToggle("MAX-ZOOM", "MaxZoom")
-CreateToggle("FREECAM", "Freecam")
-CreateToggle("FLY-MODE", "FlyMode")
-CreateToggle("INF-JUMP", "InfJump")
-CreateToggle("FAKE-LAG", "PingFake")
-CreateToggle("NO-ANIMATION", "NoAnim")
-CreateToggle("GHOST-MODE", "GhostMode")
-CreateToggle("GOD-MODE", "GodMode")
-CreateToggle("GOD-MODE V2", "GodModeV2")
-CreateToggle("ANTI-COLLECT", "AntiCollect")
-CreateToggle("AUTO-COLLECT", "Magnet")
-CreateToggle("SPEED-HACK", "SpeedHack")
-CreateToggle("ANTI-KNOCKBACK", "AntiKnockback")
-CreateToggle("AUTO-LEAVE", "AutoLeave")
-CreateToggle("AUTO-WARN", "AutoWarn")
-CreateToggle("SKIN-CHANGER", "SkinChanger")
-CreateToggle("INSTANT-PULL", "AutoPull")
+-- [[ LOAD FEATURES ]]
+-- [[ UPDATED FEATURES LIST ]]
+local Features = {
+    {"MAX-ZOOM", "MaxZoom"},
+    {"FREECAM", "Freecam"},
+    {"FLY-HACK", "FlyMode"},
+    {"INF-JUMP", "InfJump"},
+    {"FAKE-LAG", "PingFake"},
+    {"NO-ANIM", "NoAnim"},
+    {"GHOST-MODE", "GhostMode"},
+    {"GOD-MODEV1", "GodMode"},
+    {"GOD-MODEV2", "GodModeV2"},
+    {"ANTI-COLECT", "AntiCollect"},
+    {"AUTO-COLLECT", "Magnet"},
+    {"SPEED-HACK", "SpeedHack"},
+    {"ANTI-KNOCKBACK", "AntiKnockback"},
+    {"AUTO-LEAVE", "AutoLeave"},
+    {"AUTO-WARN", "AutoWarn"},
+    {"SKIN-CHANGER", "SkinChanger"},
+    {"INSTANT-PULL", "AutoPull"}
+}
+
+-- [[ LOOP TO GENERATE ]]
+for _, feat in ipairs(Features) do
+    CreateToggle(feat[1], feat[2])
+end
 
 -- [[ 5. PRECISION IMAGE CROSSHAIR & TELEPORT ]]
 local CrossGui = Instance.new("ScreenGui", Player.PlayerGui)
