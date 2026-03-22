@@ -556,13 +556,12 @@ MainIcon.Name = "MainIcon"
 MainIcon.Size = UDim2.new(0, 22, 0, 22) 
 MainIcon.Position = UDim2.new(0, 8, 0, 6)
 MainIcon.BackgroundTransparency = 1
-MainIcon.Image = "rbxthumb://type=Asset&id=84894744927863&w=150&h=150"
+MainIcon.Image = "rbxthumb://type=Asset&id=96638081600454&w=150&h=150"
 
 -- Icon Logic (Breathing & Changing)
 local IconList = {
-    "rbxthumb://type=Asset&id=84894744927863&w=150&h=150",
-    "rbxthumb://type=Asset&id=10955300180&w=150&h=150",
-    "rbxthumb://type=Asset&id=113103683003277&w=150&h=150"
+    "rbxthumb://type=Asset&id=96638081600454&w=150&h=150",
+  "rbxthumb://type=Asset&id=13642407556&w=150&h=150",
 }
 
 task.spawn(function()
@@ -759,13 +758,12 @@ UserInputService.InputBegan:Connect(function(input, processed)
     end
 end)
 
--- [[ 4. UPDATED MAGNET & AUTO-COLLECT LOGIC ]]
+-- [[ 4. UPDATED MAGNET & AUTO-COLLECT LOGIC - FIXED ]]
 local MovementRemote = game.ReplicatedStorage.Remotes.PlayerMovementPackets:WaitForChild(Player.Name)
 
 -- Configuration
-Settings.MagnetRange = 200
+Settings.MagnetRange = 100
 
--- Reusable Collection Function
 local function CollectItem(item)
     if not Settings.Magnet or Settings.AntiCollect then return end
     if not item:IsA("BasePart") or item:GetAttribute("t") then return end
@@ -776,29 +774,48 @@ local function CollectItem(item)
 
     local distance = (root.Position - item.Position).Magnitude
     if distance <= Settings.MagnetRange then
-        item:SetAttribute("t", true) -- Mark immediately to prevent double-collecting
+        item:SetAttribute("t", true) -- Lock the item
 
         task.spawn(function()
-            -- Visual Polish: Smoothly fly to player
+            local oldCanCollide = item.CanCollide
+            local oldAnchored = item.Anchored
+            
             item.CanCollide = false
             item.Anchored = true
             
             local startPos = item.Position
-            local duration = 0.25 -- Faster flight (0.25s) for responsiveness
-            local startTick = tick()
+            local duration = 0.25 
+            local elapsed = 0
             
-            while tick() - startTick < duration do
-                -- Stop if item is destroyed or player toggles Anti-Collect
-                if not item or not item.Parent or not root or Settings.AntiCollect then break end
+            while elapsed < duration do
+                local step = game:GetService("RunService").Heartbeat:Wait()
+                elapsed = elapsed + step
                 
-                local pc = (tick() - startTick) / duration
+                -- Check if we should abort mid-flight
+                if not Settings.Magnet or Settings.AntiCollect or not item.Parent or not root then
+                    item.Anchored = oldAnchored
+                    item.CanCollide = oldCanCollide
+                    item:SetAttribute("t", nil) -- RESET: Allow re-collection
+                    return 
+                end
+                
+                local pc = math.min(elapsed / duration, 1)
+                -- Dynamic Lerp: Always moving towards the CURRENT root position
                 item.Position = startPos:Lerp(root.Position, pc)
-                RunService.Heartbeat:Wait()
             end
 
             -- Final Server Notification
-            if item and item.Parent and not Settings.AntiCollect then
+            if item and item.Parent then
                 MovementRemote:FireServer(Vector2.new(item.Position.X, item.Position.Y))
+                
+                -- [[ SAFETY NET ]]
+                -- Wait a moment for server to destroy item. If it's still here, unlock it.
+                task.wait(0.5)
+                if item and item.Parent then
+                    item.Anchored = oldAnchored
+                    item.CanCollide = oldCanCollide
+                    item:SetAttribute("t", nil) -- Release lock so magnet can try again
+                end
             end
         end)
     end
@@ -1120,31 +1137,38 @@ if CoreGui:FindFirstChild("DropManagerCSN") then
     CoreGui.DropManagerCSN:Destroy()
 end
 
-local ScreenGui = Instance.new("ScreenGui", CoreGui)
+local ScreenGui = Instance.new("ScreenGui", game:GetService("CoreGui"))
 ScreenGui.Name = "DropManagerCSN"
 ScreenGui.ResetOnSpawn = false
 ScreenGui.IgnoreGuiInset = true
 
+-- [[ CONFIG & STATE ]]
+local isMinimized = false
+local FullSize = UDim2.new(0, 160, 0, 280) -- Compacted height
+local MinSize = UDim2.new(0, 160, 0, 32)
+
+-- [[ MAIN FRAME ]]
 local Main = Instance.new("Frame", ScreenGui)
 Main.Name = "MainFrame"
-Main.Position = UDim2.new(0.5, -85, 0.4, 0)
-Main.Size = UDim2.new(0, 170, 0, 310) -- Compacted size
-Main.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+Main.Position = UDim2.new(0.5, -80, 0.4, 0)
+Main.Size = FullSize
+Main.BackgroundColor3 = Color3.fromRGB(12, 12, 12)
 Main.BorderSizePixel = 0
 Main.Active = true
-Main.Draggable = true
-Main.ClipsDescendants = true -- Para sa minimize
-Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
-Instance.new("UIStroke", Main).Color = Color3.fromRGB(45, 45, 45)
+Main.ClipsDescendants = true 
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 8)
+local Stroke = Instance.new("UIStroke", Main)
+Stroke.Color = Color3.fromRGB(40, 40, 40)
+Stroke.Thickness = 1.2
 
--- Decorative Icon (Ginawang ImageButton para sa Minimize)
+-- [[ HEADER ICON (MINIMIZE BUTTON) ]]
 local MainIcon = Instance.new("ImageButton", Main)
-MainIcon.Size = UDim2.new(0, 25, 0, 25) 
+MainIcon.Size = UDim2.new(0, 22, 0, 22) 
 MainIcon.AnchorPoint = Vector2.new(0.5, 0.5)
-MainIcon.Position = UDim2.new(0, 22, 0, 18)
+MainIcon.Position = UDim2.new(0, 20, 0, 16)
 MainIcon.BackgroundTransparency = 1
 MainIcon.Image = "rbxthumb://type=Asset&id=10820259764&w=150&h=150"
-MainIcon.ZIndex = 5
+MainIcon.ZIndex = 10
 
 task.spawn(function()
     local t = 0
@@ -1153,12 +1177,10 @@ task.spawn(function()
         t = t + 0.05
         MainIcon.Rotation = math.sin(t * 2) * 15
         local s = 0.9 + (math.sin(t * 1.5) * 0.1)
-        MainIcon.Size = UDim2.new(0, 25 * s, 0, 25 * s)
-        
-        -- Shake Logic
+        MainIcon.Size = UDim2.new(0, 22 * s, 0, 22 * s)
         if math.floor(t * 20) % 50 == 0 then
             for i = 1, 6 do
-                MainIcon.Position = origPos + UDim2.new(0, math.random(-2,2), 0, math.random(-2,2))
+                MainIcon.Position = origPos + UDim2.new(0, math.random(-1,1), 0, math.random(-1,1))
                 task.wait(0.04)
             end
             MainIcon.Position = origPos
@@ -1168,129 +1190,173 @@ task.spawn(function()
 end)
 
 local Title = Instance.new("TextLabel", Main)
-Title.Size = UDim2.new(1, -50, 0, 38)
-Title.Position = UDim2.new(0, 42, 0, 0) 
-Title.Text = "DROP MANAGER [CSN]"
-Title.TextColor3 = Color3.new(1,1,1)
-Title.Font = Enum.Font.GothamBold
+Title.Name = "Title"
+Title.Size = UDim2.new(1, -40, 0, 32)
+Title.Position = UDim2.new(0, 38, 0, 0) 
+Title.Text = "DROP ITEMS [CSN]"
+Title.TextColor3 = Color3.new(1,1,1) -- Keep this White
+Title.Font = Enum.Font.Code
 Title.TextSize = 9
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.BackgroundTransparency = 1
 
-local ItemDisplay = Instance.new("TextLabel", Main)
-ItemDisplay.Size = UDim2.new(1, -20, 0, 25)
-ItemDisplay.Position = UDim2.new(0, 10, 0, 42)
-ItemDisplay.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
+-- [[ BRIGHT SILVER GRADIENT ]] --
+local TitleGradient = Instance.new("UIGradient", Title)
+TitleGradient.Rotation = 0 -- Horizontal para mas kitang-kita ang silver shine
+TitleGradient.Color = ColorSequence.new({
+    ColorSequenceKeypoint.new(0, Color3.fromRGB(180, 180, 180)), -- Silver (Edge)
+    ColorSequenceKeypoint.new(0.5, Color3.fromRGB(255, 255, 255)), -- Pure White (Shine)
+    ColorSequenceKeypoint.new(1, Color3.fromRGB(180, 180, 180))  -- Silver (Edge)
+})
+
+-- [[ CONTENT CONTAINER (PARA SA CLEAN MINIMIZE) ]]
+local Content = Instance.new("Frame", Main)
+Content.Name = "Content"
+Content.Size = UDim2.new(1, 0, 1, -32)
+Content.Position = UDim2.new(0, 0, 0, 32)
+Content.BackgroundTransparency = 1
+
+local ItemDisplay = Instance.new("TextLabel", Content)
+ItemDisplay.Size = UDim2.new(1, -16, 0, 22)
+ItemDisplay.Position = UDim2.new(0, 8, 0, 5)
+ItemDisplay.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
 ItemDisplay.Text = "Holding: None"
 ItemDisplay.TextColor3 = Color3.fromRGB(255, 200, 0)
-ItemDisplay.Font = Enum.Font.GothamBold
-ItemDisplay.TextSize = 10
-ItemDisplay.BorderSizePixel = 0
-Instance.new("UICorner", ItemDisplay).CornerRadius = UDim.new(0, 6)
+ItemDisplay.Font = Enum.Font.Code
+ItemDisplay.TextSize = 9
+Instance.new("UICorner", ItemDisplay).CornerRadius = UDim.new(0, 4)
 
-local AmountInput = Instance.new("TextBox", Main)
-AmountInput.Size = UDim2.new(1, -20, 0, 28)
-AmountInput.Position = UDim2.new(0, 10, 0, 72)
-AmountInput.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+local AmountInput = Instance.new("TextBox", Content)
+AmountInput.Size = UDim2.new(1, -16, 0, 24)
+AmountInput.Position = UDim2.new(0, 8, 0, 32)
+AmountInput.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
 AmountInput.Text = "0"
 AmountInput.PlaceholderText = "Amount"
 AmountInput.TextColor3 = Color3.new(1,1,1)
-AmountInput.Font = Enum.Font.GothamBold
-AmountInput.TextSize = 12
-Instance.new("UICorner", AmountInput).CornerRadius = UDim.new(0, 6)
+AmountInput.Font = Enum.Font.Code
+AmountInput.TextSize = 11
+Instance.new("UICorner", AmountInput).CornerRadius = UDim.new(0, 4)
 
-local ToggleBtn = Instance.new("TextButton", Main)
-ToggleBtn.Size = UDim2.new(1, -20, 0, 32)
-ToggleBtn.Position = UDim2.new(0, 10, 0, 105)
+local ToggleBtn = Instance.new("TextButton", Content)
+ToggleBtn.Size = UDim2.new(1, -16, 0, 28)
+ToggleBtn.Position = UDim2.new(0, 8, 0, 62)
 ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 220, 150)
-ToggleBtn.Text = "START MULTI-DROP"
-ToggleBtn.TextColor3 = Color3.fromRGB(15, 15, 15)
-ToggleBtn.Font = Enum.Font.GothamBold
-ToggleBtn.TextSize = 11
-Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 6)
+ToggleBtn.Text = "START DROP"
+ToggleBtn.TextColor3 = Color3.fromRGB(12, 12, 12)
+ToggleBtn.Font = Enum.Font.Code
+ToggleBtn.TextSize = 10
+Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 4)
 
-local SilentBtn = Instance.new("TextButton", Main)
-SilentBtn.Size = UDim2.new(1, -20, 0, 22)
-SilentBtn.Position = UDim2.new(0, 10, 0, 142)
-SilentBtn.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
+local SilentBtn = Instance.new("TextButton", Content)
+SilentBtn.Size = UDim2.new(1, -16, 0, 22)
+SilentBtn.Position = UDim2.new(0, 8, 0, 95)
+SilentBtn.BackgroundColor3 = Color3.fromRGB(0, 220, 150)
 SilentBtn.Text = "SHOW UI: ON"
 SilentBtn.TextColor3 = Color3.fromRGB(100, 255, 100)
-SilentBtn.Font = Enum.Font.GothamBold
-SilentBtn.TextSize = 9
+SilentBtn.Font = Enum.Font.Code
+SilentBtn.TextSize = 8
 Instance.new("UICorner", SilentBtn).CornerRadius = UDim.new(0, 4)
 
--- [[ 3. SCROLL FRAME (FIXED: NO MORE BLOCK) ]] --
-local ScrollFrame = Instance.new("ScrollingFrame", Main)
+local ScrollFrame = Instance.new("ScrollingFrame", Content)
 ScrollFrame.Name = "ScrollFrame"
-ScrollFrame.Position = UDim2.new(0, 5, 0, 175) 
--- Ginawa nating -210 ang offset para magkasya yung 3 boxes bago ang InfoLabel
-ScrollFrame.Size = UDim2.new(1, -10, 1, -200) 
+ScrollFrame.Position = UDim2.new(0, 8, 0, 125) 
+ScrollFrame.Size = UDim2.new(1, -16, 1, -145)
 ScrollFrame.BackgroundTransparency = 1
-ScrollFrame.ScrollBarThickness = 0 -- Tinanggal ang bar para malinis
-ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0) -- Hahayaan ang AutomaticSize
+ScrollFrame.ScrollBarThickness = 0
 ScrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
-ScrollFrame.ScrollingEnabled = true
-ScrollFrame.ClipsDescendants = true
+ScrollFrame.CanvasSize = UDim2.new(0, 0, 0, 0)
 
 local Grid = Instance.new("UIGridLayout", ScrollFrame)
--- Ginawang 35 ang height (mula 40) para siguradong lilitaw lahat
-Grid.CellSize = UDim2.new(1, -10, 0, 35) 
+Grid.CellSize = UDim2.new(1, 0, 0, 32) 
 Grid.CellPadding = UDim2.new(0, 0, 0, 4)
 
--- [[ 4. INFO LABEL (FIXED: MOVED UP) ]] --
-local InfoLabel = Instance.new("TextLabel", Main)
+local InfoLabel = Instance.new("TextLabel", Content)
 InfoLabel.Name = "InfoLabel"
-InfoLabel.Size = UDim2.new(1, -20, 0, 20)
--- Nilipat sa -25 para hindi siya masyadong dikit sa kanto ng frame
-InfoLabel.Position = UDim2.new(0, 10, 1, -25) 
+InfoLabel.Size = UDim2.new(1, 0, 0, 15)
+InfoLabel.AnchorPoint = Vector2.new(0, 1) 
+InfoLabel.Position = UDim2.new(0, 0, 1, -5) 
 InfoLabel.BackgroundTransparency = 1
-InfoLabel.Text = "USE: /di [amount] TO DROP"
-InfoLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
-InfoLabel.Font = Enum.Font.GothamSemibold
-InfoLabel.TextSize = 8 -- Ginawang 8 para mas compact
+InfoLabel.Text = "/di [amount] TO DROP"
+InfoLabel.TextColor3 = Color3.fromRGB(120, 120, 120)
+InfoLabel.Font = Enum.Font.Code
+InfoLabel.TextSize = 8 -- Ginawang 8 para mas readable sa Mobile
 InfoLabel.ZIndex = 10
 
---- [[ LOGIC CORE VARS ]] ---
-local LockedId = nil
-local isDropping = false
-local SessionDroppedCount = 0
-local LastTotal = 0
-local SlotLocks = {}
 
+-- [[ MINIMIZE LOGIC ]]
+MainIcon.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized
+    local targetSize = isMinimized and MinSize or FullSize
+    
+    -- Hide lahat ng laman instantly
+    Content.Visible = not isMinimized
+    
+    game:GetService("TweenService"):Create(Main, TweenInfo.new(0.3, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {
+        Size = targetSize
+    }):Play()
+end)
+
+-- [[ DRAGGING (MOBILE FIX) ]]
+local dragging, dragStart, startPos
+Main.InputBegan:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = true
+        dragStart = input.Position
+        startPos = Main.Position
+    end
+end)
+
+game:GetService("UserInputService").InputChanged:Connect(function(input)
+    if dragging and (input.UserInputType == Enum.UserInputType.MouseMovement or input.UserInputType == Enum.UserInputType.Touch) then
+        local delta = input.Position - dragStart
+        Main.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + delta.X, startPos.Y.Scale, startPos.Y.Offset + delta.Y)
+    end
+end)
+
+game:GetService("UserInputService").InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 or input.UserInputType == Enum.UserInputType.Touch then
+        dragging = false
+    end
+end)
+
+-- [[ RESULT BOX FUNCTION ]]
 local function CreateResultBox(name, iconId, color)
     local Frame = Instance.new("Frame", ScrollFrame)
-    Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-    Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 6)
+    Frame.BackgroundColor3 = Color3.fromRGB(22, 22, 22)
+    Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 5)
+    
     local Icon = Instance.new("ImageLabel", Frame)
-    Icon.Size = UDim2.new(0, 16, 0, 16)
-    Icon.Position = UDim2.new(0, 10, 0, 4)
+    Icon.Size = UDim2.new(0, 14, 0, 14)
+    Icon.Position = UDim2.new(0, 8, 0.5, -7)
     Icon.BackgroundTransparency = 1
     Icon.Image = "rbxassetid://" .. iconId
     Icon.ImageColor3 = color
+    
     local Lbl = Instance.new("TextLabel", Frame)
-    Lbl.Size = UDim2.new(1, -40, 0, 15)
-    Lbl.Position = UDim2.new(0, 35, 0, 2)
+    Lbl.Size = UDim2.new(0.5, 0, 1, 0)
+    Lbl.Position = UDim2.new(0, 28, 0, 0)
     Lbl.Text = name
-    Lbl.TextColor3 = Color3.fromRGB(180, 180, 180)
-    Lbl.Font = Enum.Font.GothamBold
+    Lbl.TextColor3 = Color3.fromRGB(150, 150, 150)
+    Lbl.Font = Enum.Font.Code
     Lbl.TextSize = 7
     Lbl.BackgroundTransparency = 1
     Lbl.TextXAlignment = Enum.TextXAlignment.Left
+    
     local ValDisp = Instance.new("TextLabel", Frame)
-    ValDisp.Size = UDim2.new(1, -40, 0, 18)
-    ValDisp.Position = UDim2.new(0, 35, 1, -22)
+    ValDisp.Size = UDim2.new(0.4, 0, 1, 0)
+    ValDisp.Position = UDim2.new(1, -70, 0, 0)
     ValDisp.Text = "0"
     ValDisp.TextColor3 = color
-    ValDisp.Font = Enum.Font.GothamBold
-    ValDisp.TextSize = 12
+    ValDisp.Font = Enum.Font.Code
+    ValDisp.TextSize = 10
     ValDisp.BackgroundTransparency = 1
-    ValDisp.TextXAlignment = Enum.TextXAlignment.Left
+    ValDisp.TextXAlignment = Enum.TextXAlignment.Right
     return ValDisp
 end
 
-local HoldingVal = CreateResultBox("ITEM TOTAL", "6034287525", Color3.fromRGB(100, 200, 255))
-local DroppedVal = CreateResultBox("SESSION DROPPED", "6031225818", Color3.fromRGB(100, 255, 100))
-local RemainingVal = CreateResultBox("FINAL TOTAL", "6023426926", Color3.fromRGB(255, 150, 0))
+local HoldingVal = CreateResultBox("TOTAL", "6034287525", Color3.fromRGB(100, 200, 255))
+local DroppedVal = CreateResultBox("DROPPED", "6031225818", Color3.fromRGB(100, 255, 100))
+local RemainingVal = CreateResultBox("FINAL", "6023426926", Color3.fromRGB(255, 150, 0))
 
 -- [[ CSN TARGET-LOCK SYNC SYSTEM ]] --
 
@@ -1639,9 +1705,9 @@ end)
 local Title = Instance.new("TextLabel", Main)
 Title.Size = UDim2.new(1, -40, 0, 32)
 Title.Position = UDim2.new(0, 35, 0, 0) 
-Title.Text = "TAX MODE [CSN]"
+Title.Text = "CHAT SPAMMER [CSN]"
 Title.TextColor3 = Color3.new(1,1,1)
-Title.Font = Enum.Font.GothamBold
+Title.Font = Enum.Font.Code
 Title.TextSize = 8 -- Shrunk
 Title.TextXAlignment = Enum.TextXAlignment.Left
 Title.BackgroundTransparency = 1
@@ -1668,27 +1734,26 @@ local function StyleInput(obj)
     s.Thickness = 1
 end
 
--- Inputs (Positioned Tight)
 local MsgInput = Instance.new("TextBox", Main)
-MsgInput.Size = UDim2.new(1, -16, 0, 24) -- Shrunk Height
+MsgInput.Size = UDim2.new(1, -16, 0, 24)
 MsgInput.Position = UDim2.new(0, 8, 0, 38)
 MsgInput.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 MsgInput.Text = Config.Message or "Message"
 MsgInput.TextColor3 = Color3.fromRGB(255, 200, 0)
-MsgInput.Font = Enum.Font.GothamBold
+MsgInput.Font = Enum.Font.Code -- FIXED FONT
 MsgInput.TextSize = 9
 MsgInput.ClearTextOnFocus = false
 StyleInput(MsgInput)
 MsgInput.FocusLost:Connect(function() Config.Message = MsgInput.Text end)
 
 local TimerInput = Instance.new("TextBox", Main)
-TimerInput.Size = UDim2.new(1, -16, 0, 24) -- Shrunk Height
+TimerInput.Size = UDim2.new(1, -16, 0, 24)
 TimerInput.Position = UDim2.new(0, 8, 0, 68)
 TimerInput.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
 TimerInput.PlaceholderText = "Wait Time"
 TimerInput.Text = tostring(Config.Cooldown)
 TimerInput.TextColor3 = Color3.new(1,1,1)
-TimerInput.Font = Enum.Font.GothamBold
+TimerInput.Font = Enum.Font.Code -- FIXED FONT
 TimerInput.TextSize = 10
 StyleInput(TimerInput)
 TimerInput.FocusLost:Connect(function() 
@@ -1696,14 +1761,13 @@ TimerInput.FocusLost:Connect(function()
     if v then Config.Cooldown = v else TimerInput.Text = tostring(Config.Cooldown) end
 end)
 
--- Main Button (Small & Clean)
 local ToggleBtn = Instance.new("TextButton", Main)
 ToggleBtn.Size = UDim2.new(1, -16, 0, 28)
 ToggleBtn.Position = UDim2.new(0, 8, 0, 98)
-ToggleBtn.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
+ToggleBtn.BackgroundColor3 = Color3.fromRGB(0, 220, 150)
 ToggleBtn.Text = "START SPAMMER"
-ToggleBtn.TextColor3 = Color3.fromRGB(255, 255, 255)
-ToggleBtn.Font = Enum.Font.GothamBold
+ToggleBtn.TextColor3 = Color3.fromRGB(0,0,0)
+ToggleBtn.Font = Enum.Font.Code -- FIXED FONT
 ToggleBtn.TextSize = 10
 ToggleBtn.BorderSizePixel = 0
 Instance.new("UICorner", ToggleBtn).CornerRadius = UDim.new(0, 5)
