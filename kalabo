@@ -858,104 +858,81 @@ end)
 
 --CALCULATOR--
 
+-- [[ ERIK JOSHUA C. ARNEDO - CAW TAX CALCULATOR V3 (ANIMATED & COMPACT) ]]
+
 local Players = game:GetService("Players")
 local Player = Players.LocalPlayer or Players.PlayerAdded:Wait()
 local PlayerGui = Player:WaitForChild("PlayerGui")
 local TweenService = game:GetService("TweenService")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
 
 -- Cleanup existing UI
 if PlayerGui:FindFirstChild("TaxCalculatorClient") then
     PlayerGui.TaxCalculatorClient:Destroy()
 end
 
--- State Persistence Variables
+-- [[ STATE PERSISTENCE ]]
 local CurrentMode = "Tax"
 local savedTaxPerc = "5%"
 local savedTaxAmt = ""
-local savedAddVal = ""
 local isRecalced = false
 local originalAmount, originalTax = "", ""
+local isMinimized = false
 
--- Main UI Setup
+-- [[ UI ROOT ]]
 local ScreenGui = Instance.new("ScreenGui", PlayerGui)
 ScreenGui.Name = "TaxCalculatorClient"
 ScreenGui.ResetOnSpawn = false
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
 
 local Main = Instance.new("Frame", ScreenGui)
 Main.Name = "MainFrame"
-Main.Position = UDim2.new(0.5, -95, 0.4, 0)
-Main.Size = UDim2.new(0, 190, 0, 310) 
-Main.BackgroundColor3 = Color3.fromRGB(18, 18, 18)
+Main.Position = UDim2.new(0.5, -85, 0.4, 0)
+Main.Size = UDim2.new(0, 175, 0, 280) -- Compact size for PC/Mobile
+Main.BackgroundColor3 = Color3.fromRGB(15, 15, 15)
 Main.BorderSizePixel = 0
 Main.Active = true
-Main.Draggable = true
-Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 10)
+Main.ClipsDescendants = true
+Instance.new("UICorner", Main).CornerRadius = UDim.new(0, 8)
 Instance.new("UIStroke", Main).Color = Color3.fromRGB(45, 45, 45)
 
--- Animated Icon
-local MainIcon = Instance.new("ImageLabel", Main)
-MainIcon.Size = UDim2.new(0, 28, 0, 28) 
-MainIcon.Position = UDim2.new(0, 10, 0, 6)
+-- [[ SHAKING CALCULATOR ICON ]]
+local MainIcon = Instance.new("ImageButton", Main)
+MainIcon.Size = UDim2.new(0, 25, 0, 25)
+MainIcon.Position = UDim2.new(0, 8, 0, 6) -- Matches origPos below
 MainIcon.BackgroundTransparency = 1
-MainIcon.Image = "rbxthumb://type=Asset&id=6697723418&w=150&h=150"
-
-TweenService:Create(MainIcon, TweenInfo.new(1.5, Enum.EasingStyle.Sine, Enum.EasingDirection.InOut, -1, true), {
-    Size = UDim2.new(0, 32, 0, 32),
-    Position = UDim2.new(0, 8, 0, 4)
-}):Play()
-
--- Title & Underline
-local Title = Instance.new("TextLabel", Main)
-Title.Size = UDim2.new(1, -50, 0, 40)
-Title.Position = UDim2.new(0, 45, 0, 0) 
-Title.Text = "TAX CALCULATOR [CSN]"
-Title.TextColor3 = Color3.new(1,1,1)
-Title.Font = Enum.Font.GothamBold
-Title.TextSize = 10.5
-Title.TextXAlignment = Enum.TextXAlignment.Left
-Title.BackgroundTransparency = 1
-
-local Underline = Instance.new("Frame", Main)
-Underline.Size = UDim2.new(1, -20, 0, 1)
-Underline.Position = UDim2.new(0, 10, 0, 35)
-Underline.BackgroundColor3 = Color3.new(1,1,1)
-Underline.BorderSizePixel = 0
-
-local Grad = Instance.new("UIGradient", Title)
-Grad.Color = ColorSequence.new({
-    ColorSequenceKeypoint.new(0, Color3.fromRGB(120, 120, 120)),
-    ColorSequenceKeypoint.new(0.5, Color3.new(1,1,1)),
-    ColorSequenceKeypoint.new(1, Color3.fromRGB(120, 120, 120))
-})
-local UndGrad = Grad:Clone()
-UndGrad.Parent = Underline
+MainIcon.Image = "rbxthumb://type=Asset&id=6697723418&w=150&h=150" -- Working Icon
+MainIcon.ZIndex = 5
 
 task.spawn(function()
+    local origPos = MainIcon.Position -- Keeps it perfectly in place
     while true do
-        TweenService:Create(Grad, TweenInfo.new(3, Enum.EasingStyle.Linear), {Offset = Vector2.new(1, 0)}):Play()
-        local t = TweenService:Create(UndGrad, TweenInfo.new(3, Enum.EasingStyle.Linear), {Offset = Vector2.new(1, 0)})
-        t:Play()
-        t.Completed:Wait()
-        Grad.Offset = Vector2.new(-1, 0)
-        UndGrad.Offset = Vector2.new(-1, 0)
+        task.wait(2.5) 
+        for i = 1, 8 do
+            MainIcon.Position = origPos + UDim2.new(0, math.random(-2, 2), 0, math.random(-2, 2))
+            task.wait(0.04)
+        end
+        MainIcon.Position = origPos
     end
 end)
 
--- Tab System
+local Title = Instance.new("TextLabel", Main)
+Title.Size = UDim2.new(1, -40, 0, 38)
+Title.Position = UDim2.new(0, 38, 0, 0)
+Title.Text = "TAX MODE [CSN]"; Title.TextColor3 = Color3.new(1,1,1)
+Title.Font = Enum.Font.Code; Title.TextSize = 9; Title.TextXAlignment = Enum.TextXAlignment.Left; Title.BackgroundTransparency = 1
+
+local Grad = Instance.new("UIGradient", Title)
+Grad.Color = ColorSequence.new({ColorSequenceKeypoint.new(0, Color3.fromRGB(150, 150, 150)), ColorSequenceKeypoint.new(0.5, Color3.new(1,1,1)), ColorSequenceKeypoint.new(1, Color3.fromRGB(150, 150, 150))})
+
+-- [[ TAB SYSTEM ]]
 local TabFrame = Instance.new("Frame", Main)
-TabFrame.Size = UDim2.new(1, -20, 0, 22)
-TabFrame.Position = UDim2.new(0, 10, 0, 45)
-TabFrame.BackgroundTransparency = 1
+TabFrame.Size = UDim2.new(1, -20, 0, 22); TabFrame.Position = UDim2.new(0, 10, 0, 40); TabFrame.BackgroundTransparency = 1
 
 local function CreateTab(name, xPos)
     local btn = Instance.new("TextButton", TabFrame)
-    btn.Size = UDim2.new(0.5, -3, 1, 0)
-    btn.Position = UDim2.new(xPos, 0, 0, 0)
-    btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    btn.Text = name
-    btn.TextColor3 = Color3.new(1,1,1)
-    btn.Font = Enum.Font.GothamBold
-    btn.TextSize = 9
+    btn.Size = UDim2.new(0.5, -3, 1, 0); btn.Position = UDim2.new(xPos, 0, 0, 0); btn.BackgroundColor3 = Color3.fromRGB(30, 30, 30); btn.Text = name; btn.TextColor3 = Color3.new(1,1,1); btn.Font = Enum.Font.Code; btn.TextSize = 8.5
     Instance.new("UICorner", btn).CornerRadius = UDim.new(0, 4)
     return btn
 end
@@ -964,113 +941,40 @@ local TaxTab = CreateTab("TAX", 0)
 local AddTab = CreateTab("ADDITION", 0.5)
 TaxTab.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
 
--- Inputs
+-- [[ INPUTS ]]
 local TaxInput = Instance.new("TextBox", Main)
-TaxInput.Size = UDim2.new(1, -55, 0, 30)
-TaxInput.Position = UDim2.new(0, 10, 0, 75)
-TaxInput.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
-TaxInput.Text = "5%"
-TaxInput.TextColor3 = Color3.new(1,1,1)
-TaxInput.Font = Enum.Font.GothamBold
-TaxInput.TextSize = 12
-Instance.new("UICorner", TaxInput).CornerRadius = UDim.new(0, 6)
-Instance.new("UIStroke", TaxInput).Color = Color3.fromRGB(45, 45, 45)
+TaxInput.Size = UDim2.new(1, -55, 0, 28); TaxInput.Position = UDim2.new(0, 10, 0, 70); TaxInput.BackgroundColor3 = Color3.fromRGB(22, 22, 22); TaxInput.Text = "5%"; TaxInput.TextColor3 = Color3.new(1,1,1); TaxInput.Font = Enum.Font.Code; TaxInput.TextSize = 10; Instance.new("UICorner", TaxInput)
 
 local DropBtn = Instance.new("TextButton", Main)
-DropBtn.Size = UDim2.new(0, 30, 0, 30)
-DropBtn.Position = UDim2.new(1, -40, 0, 75)
-DropBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35)
-DropBtn.Text = "≡" 
-DropBtn.TextColor3 = Color3.new(1,1,1)
-DropBtn.TextSize = 18
-Instance.new("UICorner", DropBtn).CornerRadius = UDim.new(0, 6)
+DropBtn.Size = UDim2.new(0, 28, 0, 28); DropBtn.Position = UDim2.new(1, -38, 0, 70); DropBtn.BackgroundColor3 = Color3.fromRGB(35, 35, 35); DropBtn.Text = "≡"; DropBtn.TextColor3 = Color3.new(1,1,1); DropBtn.TextSize = 15; Instance.new("UICorner", DropBtn)
 
 local AmountInput = Instance.new("TextBox", Main)
-AmountInput.Size = UDim2.new(1, -20, 0, 30)
-AmountInput.Position = UDim2.new(0, 10, 0, 110)
-AmountInput.BackgroundColor3 = Color3.fromRGB(28, 28, 28)
-AmountInput.PlaceholderText = "Amount"
-AmountInput.Text = ""
-AmountInput.TextColor3 = Color3.new(1,1,1)
-AmountInput.Font = Enum.Font.GothamBold
-Instance.new("UICorner", AmountInput).CornerRadius = UDim.new(0, 6)
-Instance.new("UIStroke", AmountInput).Color = Color3.fromRGB(45, 45, 45)
+AmountInput.Size = UDim2.new(1, -20, 0, 28); AmountInput.Position = UDim2.new(0, 10, 0, 105); AmountInput.BackgroundColor3 = Color3.fromRGB(22, 22, 22); AmountInput.PlaceholderText = "Amount"; AmountInput.Text = ""; AmountInput.TextColor3 = Color3.new(1,1,1); AmountInput.Font = Enum.Font.Code; AmountInput.TextSize = 10; Instance.new("UICorner", AmountInput)
 
-local RecalcBtn = Instance.new("TextButton", Main)
-RecalcBtn.Size = UDim2.new(1, -20, 0, 24)
-RecalcBtn.Position = UDim2.new(0, 10, 0, 145)
-RecalcBtn.BackgroundColor3 = Color3.fromRGB(0, 220, 150)
-RecalcBtn.Text = "RECALC YOU GET (50%)"
-RecalcBtn.TextColor3 = Color3.fromRGB(15, 15, 15)
-RecalcBtn.Font = Enum.Font.GothamBold
-RecalcBtn.TextSize = 10
-Instance.new("UICorner", RecalcBtn).CornerRadius = UDim.new(0, 6)
+local ActionBtn = Instance.new("TextButton", Main)
+ActionBtn.Size = UDim2.new(1, -20, 0, 24); ActionBtn.Position = UDim2.new(0, 10, 0, 140); ActionBtn.BackgroundColor3 = Color3.fromRGB(0, 220, 150); ActionBtn.Text = "RECALC YOU GET (50%)"; ActionBtn.TextColor3 = Color3.fromRGB(15, 15, 15); ActionBtn.Font = Enum.Font.Code; ActionBtn.TextSize = 9; Instance.new("UICorner", ActionBtn)
 
--- NEW: ADDITION TO TAX BUTTON
-local AddToTaxBtn = Instance.new("TextButton", Main)
-AddToTaxBtn.Size = UDim2.new(1, -20, 0, 24)
-AddToTaxBtn.Position = UDim2.new(0, 10, 0, 145)
-AddToTaxBtn.BackgroundColor3 = Color3.fromRGB(255, 160, 0)
-AddToTaxBtn.Text = "CALC TAX ON TOTAL"
-AddToTaxBtn.TextColor3 = Color3.fromRGB(15, 15, 15)
-AddToTaxBtn.Font = Enum.Font.GothamBold
-AddToTaxBtn.TextSize = 10
-AddToTaxBtn.Visible = false
-Instance.new("UICorner", AddToTaxBtn).CornerRadius = UDim.new(0, 6)
+-- [[ RESULTS BOXES ]]
+local ResultCont = Instance.new("Frame", Main)
+ResultCont.Size = UDim2.new(1, -10, 0, 120); ResultCont.Position = UDim2.new(0, 5, 0, 175); ResultCont.BackgroundTransparency = 1
 
--- Results Setup
-local ScrollFrame = Instance.new("ScrollingFrame", Main)
-ScrollFrame.Position = UDim2.new(0, 5, 0, 175)
-ScrollFrame.Size = UDim2.new(1, -10, 1, -185)
-ScrollFrame.BackgroundTransparency = 1
-ScrollFrame.ScrollBarThickness = 0 
-ScrollFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
-
-local Grid = Instance.new("UIGridLayout", ScrollFrame)
-Grid.CellSize = UDim2.new(0, 87, 0, 55)
-Grid.CellPadding = UDim2.new(0, 6, 0, 6)
-Grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
-
-local function CreateResultBox(name, iconId, color)
-    local Frame = Instance.new("Frame", ScrollFrame)
-    Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
+local function CreateResultBox(name, color, xPos)
+    local Frame = Instance.new("Frame", ResultCont); Frame.Size = UDim2.new(0.47, 0, 0, 50); Frame.Position = UDim2.new(xPos, 0, 0, 0); Frame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
     Instance.new("UICorner", Frame).CornerRadius = UDim.new(0, 6)
-    Instance.new("UIStroke", Frame).Color = Color3.fromRGB(40, 40, 40)
-
-    local Icon = Instance.new("ImageLabel", Frame)
-    Icon.Size = UDim2.new(0, 14, 0, 14)
-    Icon.Position = UDim2.new(0, 5, 0, 6)
-    Icon.BackgroundTransparency = 1
-    Icon.Image = "rbxassetid://" .. iconId
-    Icon.ImageColor3 = color
-
-    local Lbl = Instance.new("TextLabel", Frame)
-    Lbl.Size = UDim2.new(1, -25, 0, 15)
-    Lbl.Position = UDim2.new(0, 22, 0, 5)
-    Lbl.Text = name
-    Lbl.TextColor3 = Color3.fromRGB(180, 180, 180)
-    Lbl.Font = Enum.Font.GothamBold
-    Lbl.TextSize = 8
-    Lbl.BackgroundTransparency = 1
-    Lbl.TextXAlignment = Enum.TextXAlignment.Left
-
-    local ValDisp = Instance.new("TextLabel", Frame)
-    ValDisp.Size = UDim2.new(1, -10, 0, 20)
-    ValDisp.Position = UDim2.new(0, 5, 1, -22)
-    ValDisp.Text = "0"
-    ValDisp.TextColor3 = color
-    ValDisp.Font = Enum.Font.GothamBold
-    ValDisp.TextSize = 14
-    ValDisp.BackgroundTransparency = 1
-    ValDisp.TextXAlignment = Enum.TextXAlignment.Left
-
-    return ValDisp, Lbl, Icon, Frame
+    local Lbl = Instance.new("TextLabel", Frame); Lbl.Size = UDim2.new(1, 0, 0, 15); Lbl.Position = UDim2.new(0, 0, 0, 5); Lbl.Text = name; Lbl.TextColor3 = Color3.fromRGB(180, 180, 180); Lbl.Font = Enum.Font.Code; Lbl.TextSize = 7; Lbl.BackgroundTransparency = 1
+    local ValDisp = Instance.new("TextLabel", Frame); ValDisp.Size = UDim2.new(1, 0, 0, 20); ValDisp.Position = UDim2.new(0, 0, 1, -22); ValDisp.Text = "0"; ValDisp.TextColor3 = color; ValDisp.Font = Enum.Font.Code; ValDisp.TextSize = 13; ValDisp.BackgroundTransparency = 1
+    return ValDisp, Lbl, Frame
 end
 
-local YouValLabel, YouTitle, YouIcon, ResultBox1 = CreateResultBox("YOU EARN", "9314679815", Color3.fromRGB(0, 255, 180))
-local ThemValLabel, ThemTitle, ThemIcon, ResultBox2 = CreateResultBox("THEY EARN", "14833309043", Color3.fromRGB(255, 100, 100))
+local YouValLabel, YouTitle, ResultBox1 = CreateResultBox("YOU EARN", Color3.fromRGB(0, 255, 180), 0.02)
+local ThemValLabel, ThemTitle, ResultBox2 = CreateResultBox("THEY EARN", Color3.fromRGB(255, 100, 100), 0.51)
 
--- Functions
+-- [[ DROPDOWN ]]
+local DropFrame = Instance.new("Frame", Main)
+DropFrame.Size = UDim2.new(0, 100, 0, 70); DropFrame.Position = UDim2.new(1, -110, 0, 100); DropFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25); DropFrame.Visible = false; DropFrame.ZIndex = 10; Instance.new("UICorner", DropFrame); Instance.new("UIStroke", DropFrame).Color = Color3.fromRGB(60, 60, 60)
+local DropGrid = Instance.new("UIGridLayout", DropFrame); DropGrid.CellSize = UDim2.new(0, 30, 0, 30); DropGrid.CellPadding = UDim2.new(0, 3, 0, 3); DropGrid.HorizontalAlignment = Enum.HorizontalAlignment.Center; DropGrid.VerticalAlignment = Enum.VerticalAlignment.Center
+
+-- [[ CORE FUNCTIONS ]]
 local function UpdateMath()
     local cleanTax = TaxInput.Text:gsub("[^%d%.]", "")
     local cleanAmt = AmountInput.Text:gsub("[^%d%.]", "")
@@ -1078,125 +982,89 @@ local function UpdateMath()
     local n2 = tonumber(cleanAmt) or 0
     
     if CurrentMode == "Tax" then
-        if n2 > 0 then
-            local taxValue = n2 * (n1 / 100)
-            YouValLabel.Text = tostring(math.floor(taxValue))
-            ThemValLabel.Text = tostring(math.floor(n2 - taxValue))
-        else
-            YouValLabel.Text = "0"; ThemValLabel.Text = "0"
-        end
+        local taxValue = n2 * (n1 / 100)
+        YouValLabel.Text = tostring(math.floor(taxValue))
+        ThemValLabel.Text = tostring(math.floor(n2 - taxValue))
     else
         YouValLabel.Text = tostring(n1 + n1)
     end
 end
 
--- Switching Logic Functions
-local function ShowTaxTab()
-    if CurrentMode == "Addition" then savedAddVal = TaxInput.Text end
+local function SwitchToTax()
     CurrentMode = "Tax"
-    Title.Text = "TAX CALCULATOR [CSN]"
-    TaxTab.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    AddTab.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    AmountInput.Visible = true; DropBtn.Visible = true; RecalcBtn.Visible = true
-    AddToTaxBtn.Visible = false
-    ResultBox2.Visible = true
-    TaxInput.Text = savedTaxPerc
-    AmountInput.Text = savedTaxAmt
-    TaxInput.Size = UDim2.new(1, -55, 0, 30)
-    TaxInput.PlaceholderText = ""
-    YouTitle.Text = "YOU EARN"
-    YouIcon.Image = "rbxassetid://9314679815"
-    YouIcon.ImageColor3 = Color3.fromRGB(0, 255, 180)
-    YouValLabel.TextColor3 = Color3.fromRGB(0, 255, 180)
+    Title.Text = "TAX MODE [CSN]"; TaxTab.BackgroundColor3 = Color3.fromRGB(50, 50, 50); AddTab.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    AmountInput.Visible = true; DropBtn.Visible = true; ResultBox2.Visible = true
+    ActionBtn.Text = "RECALC YOU GET (50%)"; ActionBtn.BackgroundColor3 = Color3.fromRGB(0, 220, 150)
+    TaxInput.Size = UDim2.new(1, -55, 0, 28); TaxInput.Text = savedTaxPerc; TaxInput.PlaceholderText = ""
+    ResultBox1.Size = UDim2.new(0.47, 0, 0, 50); ResultBox1.Position = UDim2.new(0.02, 0, 0, 0)
+    YouTitle.Text = "YOU EARN"; YouValLabel.TextColor3 = Color3.fromRGB(0, 255, 180)
     UpdateMath()
 end
 
-local function ShowAddTab()
-    if CurrentMode == "Tax" then 
-        savedTaxPerc = TaxInput.Text
-        savedTaxAmt = AmountInput.Text
-    end
-    CurrentMode = "Addition"
-    Title.Text = "ADDITION MODE"
-    AddTab.BackgroundColor3 = Color3.fromRGB(50, 50, 50)
-    TaxTab.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
-    AmountInput.Visible = false; DropBtn.Visible = false; RecalcBtn.Visible = false
-    AddToTaxBtn.Visible = true
-    ResultBox2.Visible = false 
-    TaxInput.Text = savedAddVal
-    TaxInput.Size = UDim2.new(1, -20, 0, 30)
-    TaxInput.PlaceholderText = "Enter number to double"
-    YouTitle.Text = "TOTAL BALANCE"
-    YouIcon.Image = "rbxassetid://4974562710"
-    YouIcon.ImageColor3 = Color3.new(1,1,1)
+local function SwitchToAddition()
+    if CurrentMode == "Tax" then savedTaxPerc = TaxInput.Text end
+    CurrentMode = "Addition"; Title.Text = "ADDITION MODE [CSN]"; DropFrame.Visible = false
+    AddTab.BackgroundColor3 = Color3.fromRGB(50, 50, 50); TaxTab.BackgroundColor3 = Color3.fromRGB(30, 30, 30)
+    AmountInput.Visible = false; DropBtn.Visible = false; ResultBox2.Visible = false 
+    ActionBtn.Text = "CALC TAX ON TOTAL"; ActionBtn.BackgroundColor3 = Color3.fromRGB(255, 160, 0)
+    TaxInput.Size = UDim2.new(1, -20, 0, 28); TaxInput.Text = ""; TaxInput.PlaceholderText = "Enter amount to double..."
+    ResultBox1.Size = UDim2.new(1, -10, 0, 60); ResultBox1.Position = UDim2.new(0, 5, 0, 0)
+    YouTitle.Text = "TOTAL BALANCE"; YouValLabel.TextColor3 = Color3.new(1,1,1)
     UpdateMath()
 end
 
-TaxTab.MouseButton1Click:Connect(ShowTaxTab)
-AddTab.MouseButton1Click:Connect(ShowAddTab)
+TaxTab.MouseButton1Click:Connect(SwitchToTax)
+AddTab.MouseButton1Click:Connect(SwitchToAddition)
 
--- Recalc Logic
-RecalcBtn.MouseButton1Click:Connect(function()
-    if not isRecalced then
-        originalAmount = AmountInput.Text
-        originalTax = TaxInput.Text
-        local val = tonumber(YouValLabel.Text) or 0
-        if val > 0 then
-            AmountInput.Text = tostring(val)
-            TaxInput.Text = "50%"
-            RecalcBtn.Text = "BACK TO ORIGINAL"
-            RecalcBtn.BackgroundColor3 = Color3.fromRGB(220, 80, 80)
-            isRecalced = true
-        end
-    else
-        AmountInput.Text = originalAmount
-        TaxInput.Text = originalTax
-        RecalcBtn.Text = "RECALC YOU GET (50%)"
-        RecalcBtn.BackgroundColor3 = Color3.fromRGB(0, 220, 150)
-        isRecalced = false
-    end
-    UpdateMath()
-end)
-
--- ADD TO TAX LOGIC
-AddToTaxBtn.MouseButton1Click:Connect(function()
-    local totalVal = YouValLabel.Text
-    if tonumber(totalVal) and tonumber(totalVal) > 0 then
-        savedTaxAmt = totalVal -- Save the total as the new tax amount
-        ShowTaxTab() -- Switch tab
-    end
-end)
-
--- Dropdown Logic
-local DropFrame = Instance.new("Frame", Main)
-DropFrame.Size = UDim2.new(0, 105, 0, 105)
-DropFrame.Position = UDim2.new(1, 10, 0, 75) 
-DropFrame.BackgroundColor3 = Color3.fromRGB(25, 25, 25)
-DropFrame.Visible = false
-Instance.new("UICorner", DropFrame)
-Instance.new("UIStroke", DropFrame).Color = Color3.fromRGB(60, 60, 60)
-
-local DropGrid = Instance.new("UIGridLayout", DropFrame)
-DropGrid.CellSize = UDim2.new(0, 30, 0, 30)
-DropGrid.CellPadding = UDim2.new(0, 4, 0, 4)
-DropGrid.HorizontalAlignment = Enum.HorizontalAlignment.Center
-
+-- Populate Dropdown
 for _, val in pairs({5, 10, 20, 30, 40, 50}) do
     local Opt = Instance.new("TextButton", DropFrame)
-    Opt.BackgroundColor3 = Color3.fromRGB(40, 40, 40)
-    Opt.Text = val; Opt.TextColor3 = Color3.new(1,1,1)
-    Opt.Font = Enum.Font.GothamBold; Opt.TextSize = 11
-    Instance.new("UICorner", Opt)
-    Opt.MouseButton1Click:Connect(function()
-        TaxInput.Text = val .. "%"
-        UpdateMath()
-        DropFrame.Visible = false
-    end)
+    Opt.BackgroundColor3 = Color3.fromRGB(40, 40, 40); Opt.Text = val.."%"; Opt.TextColor3 = Color3.new(1,1,1); Opt.Font = Enum.Font.Code; Opt.TextSize = 9; Opt.ZIndex = 11; Instance.new("UICorner", Opt)
+    Opt.MouseButton1Click:Connect(function() TaxInput.Text = val .. "%"; UpdateMath(); DropFrame.Visible = false end)
 end
-
 DropBtn.MouseButton1Click:Connect(function() DropFrame.Visible = not DropFrame.Visible end)
 
--- Final Connections
+ActionBtn.MouseButton1Click:Connect(function()
+    if CurrentMode == "Tax" then
+        if not isRecalced then
+            originalAmount = AmountInput.Text; originalTax = TaxInput.Text
+            local val = tonumber(YouValLabel.Text) or 0
+            if val > 0 then
+                AmountInput.Text = tostring(val); TaxInput.Text = "50%"; ActionBtn.Text = "BACK TO ORIGINAL"; ActionBtn.BackgroundColor3 = Color3.fromRGB(220, 80, 80); isRecalced = true
+            end
+        else
+            AmountInput.Text = originalAmount; TaxInput.Text = originalTax; ActionBtn.Text = "RECALC YOU GET (50%)"; ActionBtn.BackgroundColor3 = Color3.fromRGB(0, 220, 150); isRecalced = false
+        end
+    else
+        local totalVal = YouValLabel.Text
+        if tonumber(totalVal) and tonumber(totalVal) > 0 then
+            AmountInput.Text = totalVal
+            SwitchToTax()
+        end
+    end
+    UpdateMath()
+end)
+
+-- Dragging Function
+local function Drag(frame)
+    local drag, start, startPos
+    frame.InputBegan:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then drag = true; start = i.Position; startPos = frame.Position end end)
+    UserInputService.InputChanged:Connect(function(i) if drag and (i.UserInputType == Enum.UserInputType.MouseMovement or i.UserInputType == Enum.UserInputType.Touch) then local d = i.Position - start; frame.Position = UDim2.new(startPos.X.Scale, startPos.X.Offset + d.X, startPos.Y.Scale, startPos.Y.Offset + d.Y) end end)
+    UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 or i.UserInputType == Enum.UserInputType.Touch then drag = false end end)
+end
+Drag(Main)
+
+-- Minimize Logic (Clickable, but no bounce animation)
+MainIcon.MouseButton1Click:Connect(function()
+    isMinimized = not isMinimized
+    
+    -- Sets the Main Frame size goal
+    local goal = isMinimized and UDim2.new(0, 175, 0, 38) or UDim2.new(0, 175, 0, 280)
+    
+    -- Smoothly transition the Main Frame
+    TweenService:Create(Main, TweenInfo.new(0.4, Enum.EasingStyle.Quart, Enum.EasingDirection.Out), {Size = goal}):Play()
+end)
+
 TaxInput:GetPropertyChangedSignal("Text"):Connect(UpdateMath)
 AmountInput:GetPropertyChangedSignal("Text"):Connect(UpdateMath)
 
