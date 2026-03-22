@@ -519,41 +519,6 @@ end
     end
 end)
 
--- [[ FPS BOOST / PLASTIC MODE LOGIC ]]
-local function ApplyFPSBoost()
-    for _, obj in pairs(workspace:GetDescendants()) do
-        if Settings.FPSBoost then
-            if obj:IsA("BasePart") then
-                obj.Material = Enum.Material.SmoothPlastic
-                obj.CastShadow = false
-            elseif obj:IsA("Decal") or obj:IsA("Texture") then
-                obj.Transparency = 1
-            end
-        end
-    end
-end
-
--- Watch for toggle and new objects
-workspace.DescendantAdded:Connect(function(obj)
-    if Settings.FPSBoost then
-        task.wait()
-        if obj:IsA("BasePart") then 
-            obj.Material = Enum.Material.SmoothPlastic 
-            obj.CastShadow = false
-        elseif obj:IsA("Decal") or obj:IsA("Texture") then 
-            obj.Transparency = 1 
-        end
-    end
-end)
-
--- Run a check every few seconds to catch missed tiles
-task.spawn(function()
-    while true do
-        if Settings.FPSBoost then ApplyFPSBoost() end
-        task.wait(5)
-    end
-end)
-
 -- [[ ERIK JOSHUA C. ARNEDO - CAW CLIENT V2 (FIXED & COMPACT) ]]
 
 local Players = game:GetService("Players")
@@ -676,7 +641,6 @@ Grid.CellSize = UDim2.new(0, 75, 0, 42)
 Grid.CellPadding = UDim2.new(0, 5, 0, 5)
 Grid.HorizontalAlignment = Enum.HorizontalAlignment.Center
 
--- [[ SAME FUNC AS YOUR ORIGINAL ]]
 local function CreateToggle(name, var)
     local Frame = Instance.new("Frame", Scroll)
     Frame.BackgroundColor3 = Color3.fromRGB(20, 20, 20)
@@ -706,20 +670,86 @@ local function CreateToggle(name, var)
     local function ToggleVisuals(state)
         local goalCol = state and Color3.fromRGB(0, 255, 180) or Color3.fromRGB(40, 40, 40)
         local textCol = state and Color3.new(1,1,1) or Color3.fromRGB(150,150,150)
-        
         TweenService:Create(Indicator, TweenInfo.new(0.2), {BackgroundColor3 = goalCol}):Play()
         TweenService:Create(Label, TweenInfo.new(0.2), {TextColor3 = textCol}):Play()
     end
+
+ local function RunUltraBooster(state)
+    local Lighting = game:GetService("Lighting")
+    
+    if state then
+        -- // ON: ULTRA PURGE (Hide everything)
+        Lighting.GlobalShadows = false
+        settings().Rendering.QualityLevel = 1
+        
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v:IsA("BasePart") then
+                v.Material = Enum.Material.SmoothPlastic
+                v.CastShadow = false
+                v.Reflectance = 0
+            elseif v:IsA("Texture") or v:IsA("Decal") then
+                v.Transparency = 1 -- Hide instead of Destroy
+            elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
+                v.Enabled = false
+            end
+        end
+
+        for _, v in pairs(Lighting:GetChildren()) do
+            if v:IsA("PostEffect") or v:IsA("BloomEffect") or v:IsA("SunRaysEffect") then
+                v.Enabled = false
+            end
+        end
+    else
+        -- // OFF: RESTORE (Bring back original looks)
+        Lighting.GlobalShadows = true
+        settings().Rendering.QualityLevel = 10 -- Adjust to your preferred high setting
+        
+        for _, v in pairs(workspace:GetDescendants()) do
+            if v:IsA("BasePart") then
+                -- Note: We set to Plastic as a safe default, 
+                -- or you can use Enum.Material.Grass/Stone if the game is specific
+                v.Material = Enum.Material.Plastic 
+                v.CastShadow = true
+            elseif v:IsA("Texture") or v:IsA("Decal") then
+                v.Transparency = 0 -- Show textures again
+            elseif v:IsA("ParticleEmitter") or v:IsA("Trail") then
+                v.Enabled = true
+            end
+        end
+
+        for _, v in pairs(Lighting:GetChildren()) do
+            if v:IsA("PostEffect") or v:IsA("BloomEffect") or v:IsA("SunRaysEffect") then
+                v.Enabled = true
+            end
+        end
+    end
+end
 
     Track.MouseButton1Click:Connect(function()
         if Settings[var] ~= nil then
             Settings[var] = not Settings[var]
             ToggleVisuals(Settings[var])
+            
+            if var == "FPSBoost" then
+                RunUltraBooster(Settings[var])
+            end
         end
     end)
     
     if Settings[var] then ToggleVisuals(true) end
 end
+
+workspace.DescendantAdded:Connect(function(obj)
+    if Settings.FPSBoost then
+        task.wait()
+        if obj:IsA("BasePart") then
+            obj.Material = Enum.Material.SmoothPlastic
+            obj.CastShadow = false
+        elseif obj:IsA("Texture") or obj:IsA("Decal") then
+            obj.Transparency = 1
+        end
+    end
+end)
 
 -- [[ LOAD FEATURES ]]
 -- [[ UPDATED FEATURES LIST ]]
