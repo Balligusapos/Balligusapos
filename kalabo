@@ -124,6 +124,7 @@ local Settings = {
     AutoPull = false,
     FPSBoost = false,
     SkinIndex = 1,
+    SpriteLock = false,
     Skins = {"785c51", "977263", "b38b79", "c49582", "e1ab97", "ffc4aa", "feceb3", "ffddb7", "ffe6c8"},
     SpeedMultiplier = 0.4, -- The default value you requested
     PingFake = false,
@@ -177,22 +178,66 @@ PlayerGui.ChildAdded:Connect(function(child)
     end
 end)
 
--- [[ NEW: SKIN CHANGER HEARTBEAT LOOP ]]
+local OriginalFace = {} -- Stores your real face data
+local updating = false
+
+local TROLL_IDS = {"rbxassetid://5934141246", "rbxassetid://5294554965", "rbxassetid://5776277719"}
+local updating = false 
+
+local function LockFace(mainLabel)
+    if not mainLabel or not Settings.SpriteLock or updating then return end
+    
+    updating = true -- CRASH PROTECTION
+    
+    local frame = (math.floor(tick() / 0.1) % #TROLL_IDS) + 1
+    local scale = 0.8 + math.sin(tick() * 4) * 0.1
+    
+    mainLabel.Image = TROLL_IDS[frame]
+    mainLabel.AnchorPoint = Vector2.new(0.5, 0.5)
+    mainLabel.Position = UDim2.new(0.5, 0, 0.5, 0)
+    mainLabel.Size = UDim2.new(scale, 0, scale, 0)
+    mainLabel.ImageRectOffset = Vector2.new(0, 0)
+    mainLabel.ImageRectSize = Vector2.new(0, 0)
+    
+    updating = false
+end
+local function SetupCharacter(char)
+    local facePart = char:WaitForChild("Face", 10)
+    local main = facePart and facePart:WaitForChild("SurfaceGui", 5) and facePart.SurfaceGui:WaitForChild("Main", 5)
+
+    if main then
+        local props = {"ImageRectOffset", "ImageRectSize", "Image", "Size", "Position"}
+        for _, prop in ipairs(props) do
+            main:GetPropertyChangedSignal(prop):Connect(function()
+                if Settings.SpriteLock then LockFace(main) end
+            end)
+        end
+    end
+end
+
 RunService.Heartbeat:Connect(function()
+    -- Skin Changer
     if Settings.SkinChanger then
-        local remote = game:GetService("ReplicatedStorage").Remotes:FindFirstChild("CustomFunctionRemote")
+        local remote = ReplicatedStorage:FindFirstChild("Remotes") and ReplicatedStorage.Remotes:FindFirstChild("CustomFunctionRemote")
         if remote then
-            -- Rapidly cycling through hex colors
-            local hex = Settings.Skins[Settings.SkinIndex]
-            remote:FireServer("ChangeColor", hex)
-            
-            Settings.SkinIndex = Settings.SkinIndex + 1
-            if Settings.SkinIndex > #Settings.Skins then
-                Settings.SkinIndex = 1
-            end
+            remote:FireServer("ChangeColor", Settings.Skins[Settings.SkinIndex])
+            Settings.SkinIndex = (Settings.SkinIndex % #Settings.Skins) + 1
+        end
+    end
+
+    -- Sprite Lock (The Stabilized Injector logic)
+    if Settings.SpriteLock then
+        local char = Player.Character
+        local main = char and char:FindFirstChild("Face") and char.Face:FindFirstChild("SurfaceGui") and char.Face.SurfaceGui:FindFirstChild("Main")
+        if main then
+            LockFace(main)
         end
     end
 end)
+
+-- Character Hooking
+if Player.Character then task.spawn(SetupCharacter, Player.Character) end
+Player.CharacterAdded:Connect(SetupCharacter)
 
 local function sendAutoWarn()
     local phrases = {
@@ -734,16 +779,48 @@ local function CreateToggle(name, var)
     end
 end
 
-    Track.MouseButton1Click:Connect(function()
-        if Settings[var] ~= nil then
-            Settings[var] = not Settings[var]
-            ToggleVisuals(Settings[var])
-            
-            if var == "FPSBoost" then
-                RunUltraBooster(Settings[var])
+Track.MouseButton1Click:Connect(function()
+    if Settings[var] ~= nil then
+        Settings[var] = not Settings[var]
+        ToggleVisuals(Settings[var])
+        
+        local char = Player.Character
+        local face = char and char:FindFirstChild("Face")
+        local main = face and face:FindFirstChild("SurfaceGui") and face.SurfaceGui:FindFirstChild("Main")
+
+        if var == "SpriteLock" then
+            if Settings.SpriteLock then
+                -- [[ ON: SAVE ORIGINAL FACE DATA ]]
+                if main and not OriginalFace.Saved then
+                    OriginalFace.Image = main.Image
+                    OriginalFace.Size = main.Size
+                    OriginalFace.Position = main.Position
+                    OriginalFace.AnchorPoint = main.AnchorPoint
+                    OriginalFace.ImageRectSize = main.ImageRectSize
+                    OriginalFace.ImageRectOffset = main.ImageRectOffset
+                    OriginalFace.Saved = true -- Mark as saved
+                end
+            else
+                -- [[ OFF: RESTORE ORIGINAL FACE DATA ]]
+                if main and OriginalFace.Saved then
+                    updating = true -- Prevent signal loop during restore
+                    main.Image = OriginalFace.Image
+                    main.Size = OriginalFace.Size
+                    main.Position = OriginalFace.Position
+                    main.AnchorPoint = OriginalFace.AnchorPoint
+                    main.ImageRectSize = OriginalFace.ImageRectSize
+                    main.ImageRectOffset = OriginalFace.ImageRectOffset
+                    updating = false
+                    OriginalFace.Saved = false -- Reset for next time
+                end
             end
         end
-    end)
+
+        if var == "FPSBoost" then
+            RunUltraBooster(Settings[var])
+        end
+    end
+end)
     
     if Settings[var] then ToggleVisuals(true) end
 end
@@ -781,6 +858,7 @@ local Features = {
     {"SKIN-CHANGER", "SkinChanger"},
     {"INSTANT-PULL", "AutoPull"},
     {"FPS-BOOST", "FPSBoost"},
+    {"TROLL-FACE", "SpriteLock"},
 }
 
 -- [[ LOOP TO GENERATE ]]
