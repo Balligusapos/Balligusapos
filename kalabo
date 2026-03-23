@@ -827,105 +827,96 @@ UserInputService.InputBegan:Connect(function(input, processed)
     end
 end)
 
--- [[ 4. UPDATED MAGNET & AUTO-COLLECT LOGIC - FIXED ]]
-local MovementRemote = game.ReplicatedStorage.Remotes.PlayerMovementPackets:WaitForChild(Player.Name)
+-- [[ 5. FULLY OPTIMIZED SILENT TP MAGNET ]]
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local MovementRemote = ReplicatedStorage.Remotes.PlayerMovementPackets:WaitForChild(Player.Name)
+local PopSound = ReplicatedStorage.Sfx:FindFirstChild("pop")
 
--- Configuration
-Settings.MagnetRange = 100
+-- Optimized Range (Based on 4.5 stud tiles)
+Settings.MagnetRange = 22.5 
 
-local function CollectItem(item)
+local function CollectItem(item, root)
     if not Settings.Magnet or Settings.AntiCollect then return end
     if not item:IsA("BasePart") or item:GetAttribute("t") then return end
 
-    local char = Player.Character
-    local root = char and char:FindFirstChild("HumanoidRootPart")
-    if not root then return end
+    -- 1. Immediate Attribute Lock
+    item:SetAttribute("t", tostring(Player.UserId)) 
 
-    local distance = (root.Position - item.Position).Magnitude
-    if distance <= Settings.MagnetRange then
-        item:SetAttribute("t", true) -- Lock the item
+    task.spawn(function()
+        local originalCF = root.CFrame
+        
+        -- 2. Strict Grid Alignment Logic
+        local targetX = math.floor(item.Position.X / 4.5 + 0.5) * 4.5
+        local targetY = math.floor(item.Position.Y / 4.5 + 0.5) * 4.5
+        local targetPos = Vector2.new(targetX, targetY)
 
-        task.spawn(function()
-            local oldCanCollide = item.CanCollide
-            local oldAnchored = item.Anchored
-            
-            item.CanCollide = false
-            item.Anchored = true
-            
-            local startPos = item.Position
-            local duration = 0.25 
-            local elapsed = 0
-            
-            while elapsed < duration do
-                local step = game:GetService("RunService").Heartbeat:Wait()
-                elapsed = elapsed + step
-                
-                -- Check if we should abort mid-flight
-                if not Settings.Magnet or Settings.AntiCollect or not item.Parent or not root then
-                    item.Anchored = oldAnchored
-                    item.CanCollide = oldCanCollide
-                    item:SetAttribute("t", nil) -- RESET: Allow re-collection
-                    return 
-                end
-                
-                local pc = math.min(elapsed / duration, 1)
-                -- Dynamic Lerp: Always moving towards the CURRENT root position
-                item.Position = startPos:Lerp(root.Position, pc)
-            end
+        -- 3. The "Silent" Collection Sequence
+        root.CFrame = CFrame.new(targetX, targetY, 0)
+        MovementRemote:FireServer(targetPos)
+        
+        -- Manual sound trigger to confirm collection attempt
+        if PopSound then PopSound:Play() end
+        
+        task.wait(0.02) -- Physics tick for server sync
+        root.CFrame = originalCF
 
-            -- Final Server Notification
+        -- 4. Safety Net: Unlock if collection failed
+        task.delay(0.5, function()
             if item and item.Parent then
-                MovementRemote:FireServer(Vector2.new(item.Position.X, item.Position.Y))
-                
-                -- [[ SAFETY NET ]]
-                -- Wait a moment for server to destroy item. If it's still here, unlock it.
-                task.wait(0.5)
-                if item and item.Parent then
-                    item.Anchored = oldAnchored
-                    item.CanCollide = oldCanCollide
-                    item:SetAttribute("t", nil) -- Release lock so magnet can try again
-                end
+                item:SetAttribute("t", nil) 
             end
         end)
-    end
+    end)
 end
 
--- [INSTANT LAYER] Listen for new items appearing
+-- [LAYER 1: Instant Hook for New Spawns]
 for _, folderName in pairs({"Gems", "Drops"}) do
     local folder = workspace:FindFirstChild(folderName)
     if folder then
         folder.ChildAdded:Connect(function(child)
-            if Settings.Magnet then
-                task.wait(0.05) -- Tiny delay to let the engine settle the new part
-                CollectItem(child)
+            local root = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+            if root and Settings.Magnet and not Settings.AntiCollect then
+                task.wait(0.03) -- Brief wait for item physics
+                if (root.Position - child.Position).Magnitude <= Settings.MagnetRange then
+                    CollectItem(child, root)
+                end
             end
         end)
     end
 end
 
--- [SWEEP LAYER] Clean up items already on the ground
+-- [LAYER 2: Proximity-Sorted Constant Sweep]
 task.spawn(function()
     while true do
         if Settings.Magnet and not Settings.AntiCollect then
-            local char = Player.Character
-            local root = char and char:FindFirstChild("HumanoidRootPart")
-            
+            local root = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
             if root then
-                local G = workspace:FindFirstChild("Gems")
-                local D = workspace:FindFirstChild("Drops")
                 local items = {}
+                for _, folderName in ipairs({"Gems", "Drops"}) do
+                    local folder = workspace:FindFirstChild(folderName)
+                    if folder then
+                        for _, v in ipairs(folder:GetChildren()) do
+                            if v:IsA("BasePart") and not v:GetAttribute("t") then
+                                local dist = (root.Position - v.Position).Magnitude
+                                if dist <= Settings.MagnetRange then
+                                    table.insert(items, {Instance = v, Dist = dist})
+                                end
+                            end
+                        end
+                    end
+                end
 
-                if G then for _, v in pairs(G:GetChildren()) do table.insert(items, v) end end
-                if D then for _, v in pairs(D:GetChildren()) do table.insert(items, v) end end
-                
-                for _, item in pairs(items) do
-                    -- Exit loop immediately if settings change
+                -- Sort by closest first (Prevents distance kicks/lag)
+                table.sort(items, function(a, b) return a.Dist < b.Dist end)
+
+                for _, data in ipairs(items) do
                     if not Settings.Magnet or Settings.AntiCollect then break end
-                    CollectItem(item)
+                    CollectItem(data.Instance, root)
+                    task.wait(0.01) -- Minimum throttle
                 end
             end
         end
-        task.wait(0.1) -- Fast polling (10 times per second)
+        task.wait(0.1)
     end
 end)
 
