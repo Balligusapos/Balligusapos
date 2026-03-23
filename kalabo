@@ -827,96 +827,90 @@ UserInputService.InputBegan:Connect(function(input, processed)
     end
 end)
 
--- [[ 5. FULLY OPTIMIZED SILENT TP MAGNET ]]
+-- [[ 5. AUTO-RECOLLECT GHOST MAGNET ]]
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local MovementRemote = ReplicatedStorage.Remotes.PlayerMovementPackets:WaitForChild(Player.Name)
+local MovementRemote = ReplicatedStorage.Remotes.PlayerMovementPackets:WaitForChild(game.Players.LocalPlayer.Name)
 local PopSound = ReplicatedStorage.Sfx:FindFirstChild("pop")
 
--- Optimized Range (Based on 4.5 stud tiles)
-Settings.MagnetRange = 22.5 
-
-local function CollectItem(item, root)
-    if not Settings.Magnet or Settings.AntiCollect then return end
-    if not item:IsA("BasePart") or item:GetAttribute("t") then return end
-
-    -- 1. Immediate Attribute Lock
-    item:SetAttribute("t", tostring(Player.UserId)) 
-
+local function ForceCollect(item, root)
+    if not Settings.Magnet or item:GetAttribute("Processing") then return end
+    
+    -- Mark as processing so we don't loop forever on one item
+    item:SetAttribute("Processing", true)
+    
     task.spawn(function()
         local originalCF = root.CFrame
-        
-        -- 2. Strict Grid Alignment Logic
-        local targetX = math.floor(item.Position.X / 4.5 + 0.5) * 4.5
-        local targetY = math.floor(item.Position.Y / 4.5 + 0.5) * 4.5
-        local targetPos = Vector2.new(targetX, targetY)
+        -- RECORD THE TRUE SPAWN POSITION (The server's reality)
+        local trueX = math.floor(item.Position.X / 4.5 + 0.5) * 4.5
+        local trueY = math.floor(item.Position.Y / 4.5 + 0.5) * 4.5
+        local truePos = Vector2.new(trueX, trueY)
 
-        -- 3. The "Silent" Collection Sequence
-        root.CFrame = CFrame.new(targetX, targetY, 0)
-        MovementRemote:FireServer(targetPos)
+        local success = false
+        local attempts = 0
         
-        -- Manual sound trigger to confirm collection attempt
-        if PopSound then PopSound:Play() end
-        
-        task.wait(0.02) -- Physics tick for server sync
-        root.CFrame = originalCF
+        -- Loop until the item is gone or we give up (3 attempts)
+        while item and item.Parent and attempts < 3 do
+            attempts = attempts + 1
+            
+            -- TP to the TRUE position, not where the item drifted to
+            root.CFrame = CFrame.new(trueX, trueY, 0)
+            MovementRemote:FireServer(truePos)
+            
+            -- Wait for server response (The "Pop")
+            local startTime = os.clock()
+            local collected = false
+            
+            -- Monitoring for the pop sound or item deletion
+            repeat 
+                task.wait()
+                if not item or not item.Parent then 
+                    collected = true 
+                end
+            until collected or (os.clock() - startTime > 0.15)
 
-        -- 4. Safety Net: Unlock if collection failed
-        task.delay(0.5, function()
-            if item and item.Parent then
-                item:SetAttribute("t", nil) 
+            if collected then
+                success = true
+                break
+            else
+                -- If no pop/deletion, nudge the position slightly for the retry
+                truePos = Vector2.new(trueX + 0.05, trueY + 0.05)
             end
-        end)
+        end
+
+        -- Return home
+        root.CFrame = originalCF
+        
+        -- If it still exists after 3 tries, let the main loop try again later
+        if item and item.Parent then
+            item:SetAttribute("Processing", nil)
+            item:SetAttribute("t", nil)
+        end
     end)
 end
 
--- [LAYER 1: Instant Hook for New Spawns]
-for _, folderName in pairs({"Gems", "Drops"}) do
-    local folder = workspace:FindFirstChild(folderName)
-    if folder then
-        folder.ChildAdded:Connect(function(child)
-            local root = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
-            if root and Settings.Magnet and not Settings.AntiCollect then
-                task.wait(0.03) -- Brief wait for item physics
-                if (root.Position - child.Position).Magnitude <= Settings.MagnetRange then
-                    CollectItem(child, root)
-                end
-            end
-        end)
-    end
-end
-
--- [LAYER 2: Proximity-Sorted Constant Sweep]
+-- [LAYER 2: Constant Sweep with Ghost Logic]
 task.spawn(function()
     while true do
         if Settings.Magnet and not Settings.AntiCollect then
-            local root = Player.Character and Player.Character:FindFirstChild("HumanoidRootPart")
+            local root = game.Players.LocalPlayer.Character and game.Players.LocalPlayer.Character:FindFirstChild("HumanoidRootPart")
             if root then
-                local items = {}
                 for _, folderName in ipairs({"Gems", "Drops"}) do
                     local folder = workspace:FindFirstChild(folderName)
                     if folder then
                         for _, v in ipairs(folder:GetChildren()) do
-                            if v:IsA("BasePart") and not v:GetAttribute("t") then
+                            if v:IsA("BasePart") and not v:GetAttribute("Processing") then
                                 local dist = (root.Position - v.Position).Magnitude
-                                if dist <= Settings.MagnetRange then
-                                    table.insert(items, {Instance = v, Dist = dist})
+                                if dist <= (Settings.MagnetRange or 25) then
+                                    ForceCollect(v, root)
+                                    task.wait(0.05) -- Throttle to prevent kicks
                                 end
                             end
                         end
                     end
                 end
-
-                -- Sort by closest first (Prevents distance kicks/lag)
-                table.sort(items, function(a, b) return a.Dist < b.Dist end)
-
-                for _, data in ipairs(items) do
-                    if not Settings.Magnet or Settings.AntiCollect then break end
-                    CollectItem(data.Instance, root)
-                    task.wait(0.01) -- Minimum throttle
-                end
             end
         end
-        task.wait(0.1)
+        task.wait(0.2)
     end
 end)
 
