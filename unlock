@@ -93,6 +93,6 @@ if tostring(storedHwid) == tostring(hwid) then
 else
     warn("******************************************")
     warn("[DHB AUTH] ACCESS DENIED: HWID Mismatch.")
-    warn("Your key is locked to another computer.")
+    warn("Your key is used to another deviced.")
     warn("******************************************")
 end
