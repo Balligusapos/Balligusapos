@@ -5,7 +5,7 @@ if not _G.DHB_Passed then
 end
 
 -- 2. THE SECRET KEY CHECK
-local correct_key = "TEAMDOYDABEST"
+local correct_key = "wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww"
 
 -- Check if the key matches
 if _G.Key ~= correct_key then
