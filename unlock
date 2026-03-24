@@ -1,28 +1,57 @@
--- 1. ANTI-BYPASS CHECK
-if not _G.DHB_Passed then
-    game.Players.LocalPlayer:Kick("Bypass Detected: Use the official loader!")
-    return -- Stops execution here
+-- [[ DHB OFFICIAL - RPC LOADER ]]
+local SUPABASE_URL = "https://niwwzgbprtvzljahpujo.supabase.co"
+local SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5pd3d6Z2JwcnR2emxqYWhwdWpvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzA1NjQ3NiwiZXhwIjoyMDg4NjMyNDc2fQ.ZfkygID1AqeUTW_TLlmBpXeLrqGH13j_qN6EMWH9IUE"
+
+local http_service = game:GetService("HttpService")
+local hwid = game:GetService("RbxAnalyticsService"):GetClientId()
+local request = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
+
+-- 1. FETCH CURRENT DATA
+local response = request({
+    Url = SUPABASE_URL .. "/rest/v1/keys?key=eq." .. _G.Key .. "&select=*",
+    Method = "GET",
+    Headers = { ["apikey"] = SUPABASE_KEY, ["Authorization"] = "Bearer " .. SUPABASE_KEY }
+})
+
+local data = http_service:JSONDecode(response.Body)[1]
+if not data then return warn("Key not found.") end
+
+-- 2. LOCKING (Using the RPC Function)
+local storedHwid = data.hwid
+
+if storedHwid == nil or storedHwid == "" or storedHwid == "null" or storedHwid == " " then
+    print("Empty slot. Calling RPC Lock...")
+    
+    local rpcResponse = request({
+        Url = SUPABASE_URL .. "/rest/v1/rpc/lock_hwid",
+        Method = "POST",
+        Headers = {
+            ["apikey"] = SUPABASE_KEY,
+            ["Authorization"] = "Bearer " .. SUPABASE_KEY,
+            ["Content-Type"] = "application/json"
+        },
+        Body = http_service:JSONEncode({
+            ["user_key"] = _G.Key,
+            ["user_hwid"] = tostring(hwid)
+        })
+    })
+
+    if rpcResponse.Success then
+        print("Successfully locked via RPC!")
+        storedHwid = hwid
+    else
+        warn("RPC Failed: " .. tostring(rpcResponse.StatusCode))
+        print(rpcResponse.Body)
+        return
+    end
 end
 
--- 2. THE SECRET KEY CHECK
-local correct_key = "wwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwwww"
-
--- Check if the key matches
-if _G.Key ~= correct_key then
-    warn("FAILED: Invalid Key provided.")
-    -- We do NOT call main() here, so the script effectively ends.
-    return 
+-- 3. FINAL VALIDATION
+if storedHwid ~= hwid then
+    return warn("Access Denied: HWID Mismatch.")
 end
 
--- 3. SUCCESS LOGIC (Only runs if the checks above passed)
-_G.DHB_Passed = false -- Reset bypass flag
-_G.Key = nil          -- Clear the key from memory for safety
-
-print("Access Granted! Loading DHB Official...")
-
-local function main()
-loadstring(game:HttpGet("https://raw.githubusercontent.com/Balligusapos/Balligusapos/refs/heads/main/kalabo"))()
-end
-
--- This line is now "guarded" by the returns above
-main()
+-- 4. SUCCESS
+_G.DHB_Passed = true
+print("Access Granted!")
+oadstring(game:HttpGet("https://raw.githubusercontent.com/Balligusapos/Balligusapos/refs/heads/main/kalabo"))()
