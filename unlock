@@ -11,7 +11,6 @@ local UserKey = _G.Key
 if UserKey == nil or UserKey == "" or type(UserKey) ~= "string" then
     warn("******************************************")
     warn("[DHB AUTH] ERROR: No Key Provided!")
-    warn("Please set _G.Key = 'YOUR-KEY-HERE' before running.")
     warn("******************************************")
     return
 end
@@ -93,6 +92,6 @@ if tostring(storedHwid) == tostring(hwid) then
 else
     warn("******************************************")
     warn("[DHB AUTH] ACCESS DENIED: HWID Mismatch.")
-    warn("Your key is used to another deviced.")
+    warn("Your key is used to another device.")
     warn("******************************************")
 end
