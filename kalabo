@@ -123,6 +123,7 @@ local Settings = {
     SkinChanger = false,
     AutoPull = false,
     FPSBoost = false,
+    CollectNotify = false,
     SkinIndex = 1,
     SpriteLock = false,
     Skins = {"785c51", "977263", "b38b79", "c49582", "e1ab97", "ffc4aa", "feceb3", "ffddb7", "ffe6c8"},
@@ -177,6 +178,58 @@ PlayerGui.ChildAdded:Connect(function(child)
         end)
     end
 end)
+
+local basket = {}
+local isCompiling = false
+
+local function trackDrops(item)
+    if not item:IsA("Part") then return end
+    item:GetAttributeChangedSignal("t"):Connect(function()
+        if Settings.CollectNotify and item:GetAttribute("t") then
+            local n = tostring(item:GetAttribute("id") or "Item"):gsub("_sapling", ""):gsub("_", " "):upper()
+            local t = item:GetAttribute("amount") or 0
+            basket[n] = (basket[n] or 0) + t
+            
+            if not isCompiling then
+                isCompiling = true
+                task.wait(0.5) -- Short wait to group items
+                
+                local UIM = require(game:GetService("ReplicatedStorage"):WaitForChild("Managers"):WaitForChild("UIManager"))
+                local CB = game:GetService("ReplicatedStorage"):WaitForChild("CB")
+                
+                -- We copy the basket then clear it immediately so new drops can start a new basket
+                local currentBasket = {}
+                for k, v in pairs(basket) do currentBasket[k] = v end
+                table.clear(basket)
+                isCompiling = false -- RELEASE THE LOCK HERE
+                
+                for name, total in pairs(currentBasket) do
+                    local msg = "[CSN] COLLECTED " .. name .. " " .. total .. "X"
+                    
+                    UIM.BuildAndShowUIPrompt({
+                        ["Title"] = name,
+                        ["Icon"] = ":" .. name:lower():gsub(" ", "_"),
+                        ["Body"] = "TOTAL COLLECTED: " .. total .. "X",
+                        ["Elements"] = {
+                            {["Type"] = "Button", ["Text"] = "SEND", ["Value"] = "SEND_MSG"},
+                            {["Type"] = "Button", ["Text"] = "CLOSE", ["Value"] = "close"}
+                        }
+                    }, function(result) 
+                        if result and result.ButtonAction == "SEND_MSG" then
+                            CB:FireServer(msg)
+                        end
+                    end)
+                end
+            end
+        end
+    end)
+end
+
+local dFolder = workspace:WaitForChild("Drops", 10)
+if dFolder then
+    for _, v in ipairs(dFolder:GetChildren()) do task.spawn(trackDrops, v) end
+    dFolder.ChildAdded:Connect(trackDrops)
+end
 
 local OriginalFace = {} -- Stores your real face data
 local updating = false
@@ -859,6 +912,7 @@ local Features = {
     {"INSTANT-PULL", "AutoPull"},
     {"FPS-BOOST", "FPSBoost"},
     {"TROLL-FACE", "SpriteLock"},
+    {"COLLECT-NOTIFY", "CollectNotify"},
 }
 
 -- [[ LOOP TO GENERATE ]]
