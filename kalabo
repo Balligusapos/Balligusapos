@@ -127,6 +127,7 @@ local Settings = {
     AutoPull = false,
     FPSBoost = false,
     CollectNotify = false,
+    TrackGems = false,
     HideName = false,
     SkinIndex = 1,
     SpriteLock = false,
@@ -184,72 +185,223 @@ PlayerGui.ChildAdded:Connect(function(child)
 end)
 
 local Players = game:GetService("Players")
--- Wait for the local player to exist
-local LocalPlayer = Players.LocalPlayer or Players:GetPlayerFromCharacter(script.Parent) 
-if not LocalPlayer then
-    repeat task.wait() LocalPlayer = Players.LocalPlayer until LocalPlayer
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
+-- [[ 1. ROBUST PLAYER LOADING ]]
+local LocalPlayer = Players.LocalPlayer
+while not LocalPlayer do
+    task.wait()
+    LocalPlayer = Players.LocalPlayer
 end
 
 local myId = tostring(LocalPlayer.UserId)
 local basket = {}
 local isCompiling = false
+local Settings = Settings or { CollectNotify = true }
 
+-- [[ 2. CORE TRACKING LOGIC ]]
 local function trackDrops(item)
-    if not item:IsA("Part") then return end
+    if not item:IsA("BasePart") then return end
 
     item:GetAttributeChangedSignal("t"):Connect(function()
+        if not Settings.CollectNotify then return end
+        
         local collectorId = tostring(item:GetAttribute("t") or "")
         
-        -- Check if the 't' attribute matches YOUR ID
-        if Settings.CollectNotify and collectorId == myId then
+        -- STRICT CHECK: Only proceed if YOU are the collector
+        if collectorId == myId then
             local rawId = item:GetAttribute("id") or "Item"
+            -- Formatting: "birch_sapling" -> "BIRCH"
             local n = tostring(rawId):gsub("_sapling", ""):gsub("_", " "):upper()
-            local t = item:GetAttribute("amount") or 0
+            local amount = item:GetAttribute("amount") or 0
             
-            basket[n] = (basket[n] or 0) + t
+            -- Add to batching basket
+            basket[n] = (basket[n] or 0) + amount
             
             if not isCompiling then
                 isCompiling = true
+                -- 0.5s window to group multiple items together
                 task.delay(0.5, function()
-                    -- Re-require these inside the delay to ensure they are loaded
-                    local UIM = require(game:GetService("ReplicatedStorage"):WaitForChild("Managers"):WaitForChild("UIManager"))
-                    local CB = game:GetService("ReplicatedStorage"):WaitForChild("CB")
+                    local UIM_Module = ReplicatedStorage:WaitForChild("Managers"):WaitForChild("UIManager", 5)
+                    local CB = ReplicatedStorage:WaitForChild("CB", 5)
                     
-                    local currentBasket = {}
-                    for k, v in pairs(basket) do currentBasket[k] = v end
+                    if not (UIM_Module and CB) then 
+                        isCompiling = false 
+                        return 
+                    end
+                    
+                    local UIM = require(UIM_Module)
+                    local batchSummary = ""
+                    local chatSummary = ""
+                    local totalItems = 0
+
+                    -- Build the list and the chat message
+                    for name, total in pairs(basket) do
+                        batchSummary = batchSummary .. string.format("%s: %dX\n", name, total)
+                        chatSummary = chatSummary .. string.format("%s (%dX) ", name, total)
+                        totalItems = totalItems + total
+                    end
+                    
+                    local finalChatMsg = "[CSN] COLLECTED: " .. chatSummary
                     table.clear(basket)
                     isCompiling = false 
-                    
-                    for name, total in pairs(currentBasket) do
-                        local msg = "[CSN] COLLECTED " .. name .. " " .. total .. "X"
-                        
+
+                    -- Show the UI Prompt with your specific Icon ID
+                    pcall(function()
                         UIM.BuildAndShowUIPrompt({
-                            ["Title"] = name,
-                            ["Icon"] = ":" .. name:lower():gsub(" ", "_"),
-                            ["Body"] = "TOTAL COLLECTED: " .. total .. "X",
+                            ["Title"] = "ITEMS COLLECTED",
+                            ["Icon"] = "rbxassetid://12021275705", -- YOUR CUSTOM ICON
+                            ["Body"] = batchSummary .. "----------------\nTOTAL ITEMS: " .. totalItems,
                             ["Elements"] = {
                                 {["Type"] = "Button", ["Text"] = "SEND", ["Value"] = "SEND_MSG"},
                                 {["Type"] = "Button", ["Text"] = "CLOSE", ["Value"] = "close"}
                             }
                         }, function(result) 
                             if result and result.ButtonAction == "SEND_MSG" then
-                                CB:FireServer(msg)
+                                task.spawn(function() CB:FireServer(finalChatMsg) end)
                             end
                         end)
-                    end
+                    end)
                 end)
             end
         end
     end)
 end
 
--- Re-running the folder check
-local dFolder = workspace:WaitForChild("Drops", 10)
+-- [[ 3. INITIALIZATION ]]
+local dFolder = workspace:WaitForChild("Drops", 15)
 if dFolder then
     for _, v in ipairs(dFolder:GetChildren()) do 
         task.spawn(trackDrops, v) 
     end
     dFolder.ChildAdded:Connect(trackDrops)
+end
+
+-- [[ 1. ROBUST PLAYER LOADING ]]
+local LocalPlayer = Players.LocalPlayer
+while not LocalPlayer do
+    task.wait()
+    LocalPlayer = Players.LocalPlayer
+end
+
+local myId = tostring(LocalPlayer.UserId)
+local gemBasket = {}
+local sessionTotalValue = 0
+local isCompilingGems = false 
+
+local GEM_CONFIG = {
+    [0] = {Name = "Yellow Gem", Value = 1},
+    [1] = {Name = "Blue Gem", Value = 5},
+    [2] = {Name = "Green Gem", Value = 10},
+    [3] = {Name = "Red Gem", Value = 50},
+    [4] = {Name = "Pink Gem", Value = 100},
+}
+
+-- [[ 3. DYNAMIC ICON FETCHING ]]
+local function getGemIcon(gem)
+    local folder = gem:FindFirstChild("gems")
+    if folder then
+        -- Scans for any visual element inside the gem's 'gems' folder
+        local img = folder:FindFirstChildOfClass("ImageLabel") or 
+                    folder:FindFirstChildOfClass("Decal") or 
+                    folder:FindFirstChildOfClass("Texture")
+        
+        if img then
+            return img:IsA("ImageLabel") and img.Image or img.Texture
+        end
+    end
+    return "rbxassetid://0" -- Fallback icon
+end
+
+-- [[ 4. CORE COLLECTION LOGIC ]]
+local function trackGems(gem)
+    if not gem:IsA("BasePart") then return end
+
+    -- Triggers when the 't' (Collector) attribute changes
+    gem:GetAttributeChangedSignal("t"):Connect(function()
+        if not Settings.TrackGems then return end
+        
+        local ownerId = tostring(gem:GetAttribute("t") or "")
+        
+        -- STRICT CHECK: Only notify if YOU collected it
+        if ownerId == myId then
+            local gemId = gem:GetAttribute("n") or 0
+            local gemIcon = getGemIcon(gem)
+            
+            -- Add to batching basket
+            gemBasket[gemId] = {
+                count = (gemBasket[gemId] and gemBasket[gemId].count or 0) + 1,
+                icon = gemIcon
+            }
+            
+            -- Batch notifications (prevents UI spam)
+            if not isCompilingGems then
+                isCompilingGems = true
+                task.delay(0.6, function()
+                    local managers = ReplicatedStorage:WaitForChild("Managers", 5)
+                    local UIM_Obj = managers and managers:WaitForChild("UIManager", 5)
+                    local CB = ReplicatedStorage:WaitForChild("CB", 5)
+                    
+                    if not (UIM_Obj and CB) then 
+                        isCompilingGems = false 
+                        return 
+                    end
+                    
+                    local UIM = require(UIM_Obj)
+                    local batchValue = 0
+                    local batchSummary = ""
+                    local displayIcon = "rbxassetid://0"
+
+                    for id, data in pairs(gemBasket) do
+                        local config = GEM_CONFIG[id] or {Name = "Unknown Gem", Value = 0}
+                        batchValue = batchValue + (data.count * config.Value)
+                        batchSummary = batchSummary .. string.format("%dX %s\n", data.count, config.Name)
+                        displayIcon = data.icon 
+                    end
+                    
+                    sessionTotalValue = sessionTotalValue + batchValue
+                    
+                    -- Update HUD text (Checking global and local scope)
+                    local HUD = _G.StatLabel or (typeof(StatLabel) == "Instance" and StatLabel)
+                    if HUD then
+                        HUD.Text = string.format("TRACKER: ON\nVALUE: %d", sessionTotalValue)
+                    end
+                    
+                    local finalMsg = "[CSN] COLLECTED GEMS WORTH " .. batchValue .. "!"
+                    table.clear(gemBasket)
+                    isCompilingGems = false 
+
+                    -- Show the Game UI Prompt
+                    pcall(function()
+                        UIM.BuildAndShowUIPrompt({
+                            ["Title"] = "GEMS",
+                            ["Icon"] = displayIcon,
+                            ["Body"] = batchSummary .. "----------------\nTOTAL COLLECTED: " .. batchValue,
+                            ["Elements"] = {
+                                {["Type"] = "Button", ["Text"] = "SEND", ["Value"] = "SEND_MSG"},
+                                {["Type"] = "Button", ["Text"] = "CLOSE", ["Value"] = "close"}
+                            }
+                        }, function(result) 
+                            if result and result.ButtonAction == "SEND_MSG" then
+                                task.spawn(function() CB:FireServer(finalMsg) end)
+                            end
+                        end)
+                    end)
+                end)
+            end
+        end
+    end)
+end
+
+-- [[ 5. INITIALIZATION ]]
+local gemFolder = workspace:WaitForChild("Gems", 15)
+if gemFolder then
+    -- Track existing gems in the folder
+    for _, v in ipairs(gemFolder:GetChildren()) do 
+        task.spawn(trackGems, v) 
+    end
+    -- Track new gems that spawn
+    gemFolder.ChildAdded:Connect(trackGems)
 end
 
 local OriginalFace = {} -- Stores your real face data
@@ -959,7 +1111,8 @@ local Features = {
     {"INSTANT-PULL", "AutoPull"},
     {"FPS-BOOST", "FPSBoost"},
     {"TROLL-FACE", "SpriteLock"},
-    {"COLLECT-NOTIFY", "CollectNotify"},
+    {"ITEMS-NOTIFY", "CollectNotify"},
+    {"GEMS-NOTIFY", "TrackGems"},
     {"HIDE-NAME", "HideName"},
 }
 
