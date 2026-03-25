@@ -124,6 +124,7 @@ local Settings = {
     AutoPull = false,
     FPSBoost = false,
     CollectNotify = false,
+    HideName = false,
     SkinIndex = 1,
     SpriteLock = false,
     Skins = {"785c51", "977263", "b38b79", "c49582", "e1ab97", "ffc4aa", "feceb3", "ffddb7", "ffe6c8"},
@@ -277,6 +278,17 @@ RunService.Heartbeat:Connect(function()
             Settings.SkinIndex = (Settings.SkinIndex % #Settings.Skins) + 1
         end
     end
+
+-- [[ HIDE NAME LOGIC ]]
+if Settings.HideName then
+    local char = Player.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local tag = root and root:FindFirstChild("NameTagUI")
+    
+    if tag and tag.Enabled then
+        tag.Enabled = false
+    end
+end
 
     -- Sprite Lock (The Stabilized Injector logic)
     if Settings.SpriteLock then
@@ -869,6 +881,13 @@ Track.MouseButton1Click:Connect(function()
             end
         end
 
+if var == "HideName" and not Settings.HideName then
+    local char = Player.Character
+    local root = char and char:FindFirstChild("HumanoidRootPart")
+    local tag = root and root:FindFirstChild("NameTagUI")
+    if tag then tag.Enabled = true end
+end
+
         if var == "FPSBoost" then
             RunUltraBooster(Settings[var])
         end
@@ -913,6 +932,7 @@ local Features = {
     {"FPS-BOOST", "FPSBoost"},
     {"TROLL-FACE", "SpriteLock"},
     {"COLLECT-NOTIFY", "CollectNotify"},
+    {"HIDE-NAME", "HideName"})
 }
 
 -- [[ LOOP TO GENERATE ]]
