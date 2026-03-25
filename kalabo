@@ -346,7 +346,12 @@ end
 
 local function checkMessage(message)
     local lowerMsg = string.lower(message)
-    local isThreat = string.find(lowerMsg, "nuked") or string.find(lowerMsg, "banned") or string.find(lowerMsg, "admin")
+    
+    -- Using "true" as the 4th argument in string.find enables 'plain' matching.
+    -- This ensures symbols like '!' are treated as text, not special patterns.
+    local isThreat = string.find(lowerMsg, "nuked!", 1, true) or 
+                     string.find(lowerMsg, "banned!", 1, true) or 
+                     string.find(lowerMsg, "admin", 1, true)
 
     if isThreat then
         -- Handle Auto-Warn
@@ -357,7 +362,10 @@ local function checkMessage(message)
         -- Handle Auto-Leave
         if Settings.AutoLeave then
             task.wait(0.5) -- Small delay so the warn sends first
-            game:GetService("ReplicatedStorage").Remotes.RequestPlayerExitWorld:InvokeServer()
+            local remote = game:GetService("ReplicatedStorage"):FindFirstChild("Remotes")
+            if remote and remote:FindFirstChild("RequestPlayerExitWorld") then
+                remote.RequestPlayerExitWorld:InvokeServer()
+            end
         end
     end
 end
