@@ -1,4 +1,4 @@
--- [[ DHB OFFICIAL - SECURED & FIXED LOADER ]]
+
 local SUPABASE_URL = "https://niwwzgbprtvzljahpujo.supabase.co"
 local SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5pd3d6Z2JwcnR2emxqYWhwdWpvIiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc3MzA1NjQ3NiwiZXhwIjoyMDg4NjMyNDc2fQ.ZfkygID1AqeUTW_TLlmBpXeLrqGH13j_qN6EMWH9IUE"
 
@@ -7,23 +7,35 @@ local player = game:GetService("Players").LocalPlayer
 local hwid = game:GetService("RbxAnalyticsService"):GetClientId()
 local request = (syn and syn.request) or (http and http.request) or http_request or (fluxus and fluxus.request) or request
 
--- 1. CRITICAL: Check if _G.Key is actually set by the user
+-- 1. CRITICAL: Check if _G.Key is set
 local UserKey = _G.Key
 if UserKey == nil or UserKey == "" or type(UserKey) ~= "string" then
     warn("******************************************")
-    warn("[DHB AUTH] ERROR: No Key Provided!")
+    warn("ERROR: No Key Provided!")
     warn("******************************************")
     return
 end
 
-print("[DHB AUTH] Verifying key: " .. UserKey:sub(1, 4) .. "....")
+print("Verifying key: " .. UserKey:sub(1, 4) .. "....")
 
--- Helper: Parse Supabase ISO dates
+-- Helper: Convert Supabase Date to Readable "March 25, 2026, 09:20 AM"
+local function format_readable_date(date_str)
+    if not date_str or date_str == "" or date_str == "NULL" then return "Never (Lifetime)" end
+    local y, m, d, h, min, s = date_str:match("(%d+)-(%d+)-(%d+)[T ](%d+):(%d+):(%d+)")
+    if y then
+        local unix = os.time({year=y, month=m, day=d, hour=h, min=min, sec=s})
+        return os.date("%B %d, %Y, %I:%M:%S %p", unix)
+    end
+    return "Never (Lifetime)"
+end
+
+-- Helper: Parse for Logic Comparison with 5-second Grace Period
 local function parse_supabase_date(date_str)
     if not date_str or date_str == "" or date_str == "NULL" then return nil end
-    local y, m, d, h, min, s = date_str:match("(%d+)-(%d+)-(%d+)T(%d+):(%d+):(%d+)")
-    if y then
-        return os.time({year=y, month=m, day=d, hour=h, min=min, sec=s})
+    local y, m, d, h, min, s = date_str:match("(%d+)-(%d+)-(%d+)[T ](%d+):(%d+):(%d+)")
+    if y then 
+        -- Added +5 seconds buffer to prevent instant kicks from server/local clock desync
+        return os.time({year=y, month=m, day=d, hour=h, min=min, sec=s}) + 5 
     end
     return nil
 end
@@ -45,34 +57,38 @@ local function fetch_data()
         Headers = { ["apikey"] = SUPABASE_KEY, ["Authorization"] = "Bearer " .. SUPABASE_KEY }
     })
     if res.Success then
-        return http_service:JSONDecode(res.Body)[1]
+        local decoded = http_service:JSONDecode(res.Body)
+        return decoded[1]
     end
     return nil
 end
 
 local data = fetch_data()
 
--- 3. VALIDATE IF KEY EXISTS IN DB
+-- 3. VALIDATE IF KEY EXISTS
 if not data then 
     warn("******************************************")
-    warn("INVALID KEY: This key does not exist.")
+    warn("INVALID KEY: Key not found.")
     warn("******************************************")
     return 
 end
 
--- Display Expiration Info
-if data.expires_at and data.expires_at ~= "NULL" then
-    print("Expired at: " .. tostring(data.expires_at))
-else
-    print("Expired at: Never (Lifetime Key)")
-end
+-- Detect if it is a Lifetime key (NULL expires_at)
+local isLifetime = (data.expires_at == nil or data.expires_at == "NULL" or data.expires_at == "")
+
+-- PRINT EXPIRATION STATUS
+print("------------------------------------------")
+print("Key Loaded: " .. UserKey)
+print("Status: " .. (isLifetime and "PERMANENT ACCESS" or "TRIAL SESSION"))
+print("Expired at: " .. format_readable_date(data.expires_at))
+print("------------------------------------------")
 
 --- 4. LIVE WATCHDOG (Background Loop) ---
 task.spawn(function()
-    while task.wait(10) do -- Checks every 10 seconds
+    while task.wait(5) do -- 5s check is enough for security
         local current_data = fetch_data()
         if not current_data then 
-               player:Kick("Key has expired.")
+            player:Kick("Session Terminated: Key deleted from database.")
             break
         end
 
@@ -81,55 +97,49 @@ task.spawn(function()
             break
         end
 
-        local expiry = parse_supabase_date(current_data.expires_at)
-        if expiry and os.time() > expiry then
-            auto_delete_key() 
-            player:Kick("Key has expired.")
-            break
+        -- Only run expiry check if NOT a lifetime key
+        if not isLifetime then
+            local expiry = parse_supabase_date(current_data.expires_at)
+            if expiry and os.time() >= expiry then
+                auto_delete_key() 
+                player:Kick("Access Expired: Your trial has ended.")
+                break
+            end
         end
     end
 end)
 
--- Initial Expiry Check before loading
-local initial_expiry = parse_supabase_date(data.expires_at)
-if initial_expiry and os.time() > initial_expiry then
-    auto_delete_key()
-    player:Kick("Key already expired.")
-    return
+-- Initial Expiry Check (Safety)
+if not isLifetime then
+    local initial_expiry = parse_supabase_date(data.expires_at)
+    if initial_expiry and os.time() >= initial_expiry then
+        auto_delete_key()
+        player:Kick("Key already expired.")
+        return
+    end
 end
 
+-- 5. HWID LOCKING
 local storedHwid = data.hwid
-
--- 5. HWID LOCKING (IF SLOT IS EMPTY)
 if storedHwid == nil or storedHwid == "" or storedHwid == "null" or storedHwid == " " then
     print("New Device Detected. Locking HWID...")
-    
     local rpcResponse = request({
         Url = SUPABASE_URL .. "/rest/v1/rpc/lock_hwid",
         Method = "POST",
-        Headers = {
-            ["apikey"] = SUPABASE_KEY,
-            ["Authorization"] = "Bearer " .. SUPABASE_KEY,
-            ["Content-Type"] = "application/json"
-        },
-        Body = http_service:JSONEncode({
-            ["user_key"] = UserKey,
-            ["user_hwid"] = tostring(hwid)
-        })
+        Headers = { ["apikey"] = SUPABASE_KEY, ["Authorization"] = "Bearer " .. SUPABASE_KEY, ["Content-Type"] = "application/json" },
+        Body = http_service:JSONEncode({ ["user_key"] = UserKey, ["user_hwid"] = tostring(hwid) })
     })
-
     if rpcResponse.Success then
         print("HWID Successfully Locked!")
         storedHwid = hwid
     else
-        return warn("RPC Lock Failed: " .. tostring(rpcResponse.StatusCode))
+        return warn("RPC Lock Failed.")
     end
 end
 
 --- 6. FINAL HWID COMPARISON & EXECUTION ---
 if tostring(storedHwid) == tostring(hwid) then
     print("Access Granted! Loading script...")
-    
     local script_url = "https://raw.githubusercontent.com/Balligusapos/Balligusapos/refs/heads/main/kalabo"
     
     local success, content = pcall(function()
@@ -141,11 +151,10 @@ if tostring(storedHwid) == tostring(hwid) then
         task.wait(0.5)
         loadstring(content)()
     else
-        warn("Critical Error: Could not download main script.")
+        warn("Critical Error: Script download failed.")
     end
 else
     warn("******************************************")
     warn("ACCESS DENIED: HWID Mismatch.")
-    warn("Your key is used to another device.")
     warn("******************************************")
 end
