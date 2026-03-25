@@ -1109,9 +1109,9 @@ local Features = {
     {"INSTANT-PULL", "AutoPull"},
     {"FPS-BOOST", "FPSBoost"},
     {"TROLL-FACE", "SpriteLock"},
-    {"ITEMS-NOTIFY", "CollectNotify"},
-    {"GEMS-NOTIFY", "TrackGems"},
     {"HIDE-NAME", "HideName"},
+    {"GEMS-NOTIFY", "TrackGems"},
+    {"ITEMS-NOTIFY", "CollectNotify"},
 }
 
 -- [[ LOOP TO GENERATE ]]
