@@ -313,28 +313,24 @@ local function getGemIcon(gem)
     return "rbxassetid://0" -- Fallback icon
 end
 
--- [[ 4. CORE COLLECTION LOGIC ]]
+-- [[ 4. CORE COLLECTION LOGIC UPDATED ]]
 local function trackGems(gem)
     if not gem:IsA("BasePart") then return end
 
-    -- Triggers when the 't' (Collector) attribute changes
     gem:GetAttributeChangedSignal("t"):Connect(function()
         if not Settings.TrackGems then return end
         
         local ownerId = tostring(gem:GetAttribute("t") or "")
         
-        -- STRICT CHECK: Only notify if YOU collected it
         if ownerId == myId then
             local gemId = gem:GetAttribute("n") or 0
             local gemIcon = getGemIcon(gem)
             
-            -- Add to batching basket
             gemBasket[gemId] = {
                 count = (gemBasket[gemId] and gemBasket[gemId].count or 0) + 1,
                 icon = gemIcon
             }
             
-            -- Batch notifications (prevents UI spam)
             if not isCompilingGems then
                 isCompilingGems = true
                 task.delay(0.6, function()
@@ -352,16 +348,19 @@ local function trackGems(gem)
                     local batchSummary = ""
                     local displayIcon = "rbxassetid://0"
 
+                    -- Build the list with calculation breakdown
                     for id, data in pairs(gemBasket) do
                         local config = GEM_CONFIG[id] or {Name = "Unknown Gem", Value = 0}
-                        batchValue = batchValue + (data.count * config.Value)
-                        batchSummary = batchSummary .. string.format("%dX %s\n", data.count, config.Name)
+                        local typeTotal = data.count * config.Value
+                        
+                        batchValue = batchValue + typeTotal
+                        -- FORMAT: 2X Blue Gem (10)
+                        batchSummary = batchSummary .. string.format("%dX %s (%d)\n", data.count, config.Name, typeTotal)
                         displayIcon = data.icon 
                     end
                     
                     sessionTotalValue = sessionTotalValue + batchValue
                     
-                    -- Update HUD text (Checking global and local scope)
                     local HUD = _G.StatLabel or (typeof(StatLabel) == "Instance" and StatLabel)
                     if HUD then
                         HUD.Text = string.format("TRACKER: ON\nVALUE: %d", sessionTotalValue)
@@ -371,12 +370,11 @@ local function trackGems(gem)
                     table.clear(gemBasket)
                     isCompilingGems = false 
 
-                    -- Show the Game UI Prompt
                     pcall(function()
                         UIM.BuildAndShowUIPrompt({
                             ["Title"] = "GEMS",
                             ["Icon"] = displayIcon,
-                            ["Body"] = batchSummary .. "----------------\nTOTAL COLLECTED: " .. batchValue,
+                            ["Body"] = batchSummary .. "----------------\nTOTAL VALUE: " .. batchValue,
                             ["Elements"] = {
                                 {["Type"] = "Button", ["Text"] = "SEND", ["Value"] = "SEND_MSG"},
                                 {["Type"] = "Button", ["Text"] = "CLOSE", ["Value"] = "close"}
