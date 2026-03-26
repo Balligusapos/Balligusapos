@@ -8,6 +8,21 @@ local Whitelist = _G.G_Whitelist or {}
 local Prefix = _G.Prefix or ":"
 local KickMsg = _G.DefaultKickMessage or "Kicked."
 
+local fileName = "AdminSettings.json"
+local HttpService = game:GetService("HttpService")
+
+local function saveToDisk(data)
+    pcall(writefile, fileName, HttpService:JSONEncode(data))
+end
+
+local function loadFromDisk()
+    local success, content = pcall(readfile, fileName)
+    if success then
+        return HttpService:JSONDecode(content)
+    end
+    return {}
+end
+
 --// HELPERS //--
 local function getChar(plr)
     local p = plr or LocalPlayer
@@ -95,7 +110,6 @@ Commands.changetag = function(sender, args)
         Commands.reset(sender)
     end
 end
-end
 
 Commands.kick = function(sender, args, _, isTargeted)
     if not isTargeted then return end
@@ -171,22 +185,26 @@ if cb and cb:IsA("RemoteEvent") then
     end)
 end
 
---// PLAYER SETUP //--
 local function setupPlayer(plr)
     if not (Whitelist[plr.Name] or Whitelist[tostring(plr.UserId)]) then return end
-    
     if plr:GetAttribute("AdminHooked") then return end
     plr:SetAttribute("AdminHooked", true)
+
+    -- AUTO-LOAD FROM PC IF LOCAL PLAYER
+    if plr == LocalPlayer then
+        local data = loadFromDisk()
+        if data.SavedName then plr:SetAttribute("SavedCustomName", data.SavedName) end
+        if data.SavedTag then plr:SetAttribute("SavedCustomTag", data.SavedTag) end
+    end
 
     plr.Chatted:Connect(function(msg)
         processMsg(plr, msg)
     end)
 
-   plr.CharacterAdded:Connect(function(char)
-    -- Give the game's PlayerHandler time to clone the tag first
-    task.wait(0.5) 
-    Commands.reset(plr)
-end)
+    plr.CharacterAdded:Connect(function(char)
+        task.wait(0.7) -- Wait for game's PlayerHandler
+        Commands.reset(plr)
+    end)
     
     if plr.Character then task.spawn(Commands.reset, plr) end
 end
@@ -194,4 +212,4 @@ end
 for _, p in pairs(Players:GetPlayers()) do task.spawn(setupPlayer, p) end
 Players.PlayerAdded:Connect(setupPlayer)
 
-print("loll")
+print("waw")
