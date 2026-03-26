@@ -1,7 +1,7 @@
 --// CONFIGURATION //--
 _G.G_Whitelist = {
     ["EJGAMINGGGXXXDYT"] = true,
-    ["FriendNameHere"] = true,
+    ["DoyBestMod"] = true,
 }
 
 _G.Prefix = ":"
