@@ -39,7 +39,7 @@ Commands.reset = function(sender)
         local iconLabel = tagUI:FindFirstChild("Icon", true)
         local iconText = iconLabel and iconLabel:FindFirstChild("TextLabel")
 
-        -- Check attributes first; if empty, use original Name/Tag
+        -- Restore from Attributes OR Default
         local savedName = sender:GetAttribute("SavedCustomName") or sender.DisplayName
         local savedTag = sender:GetAttribute("SavedCustomTag") or ""
 
@@ -52,6 +52,12 @@ Commands.reset = function(sender)
     end
 end
 
+Commands.unname = function(sender)
+    sender:SetAttribute("SavedCustomName", nil)
+    sender:SetAttribute("SavedCustomTag", nil)
+    Commands.reset(sender) -- Reverts to original DisplayName immediately
+end
+
 Commands.check = function(sender)
     warn("[SYSTEM] Admin check received from: " .. (sender and sender.Name or "Unknown"))
     local cb = ReplicatedStorage:FindFirstChild("CB")
@@ -59,20 +65,18 @@ Commands.check = function(sender)
 end
 
 Commands.changename = function(sender, args, fullText)
-    local firstSpace = fullText:find(" ")
-    if not firstSpace then return end
-    local newName = fullText:sub(firstSpace + 1)
-    
-    sender:SetAttribute("SavedCustomName", newName) -- Store for persistence
-    Commands.reset(sender) -- Apply immediately
+    local newName = fullText:sub(fullText:find(" ") + 1)
+    sender:SetAttribute("SavedCustomName", newName)
+    Commands.reset(sender)
 end
 
 Commands.changetag = function(sender, args)
     local country = args[1]
     if country then
-        sender:SetAttribute("SavedCustomTag", country) -- Store for persistence
-        Commands.reset(sender) -- Apply immediately
+        sender:SetAttribute("SavedCustomTag", country)
+        Commands.reset(sender)
     end
+end
 end
 
 Commands.kick = function(sender, args, _, isTargeted)
