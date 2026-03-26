@@ -4,125 +4,142 @@ local LocalPlayer = Players.LocalPlayer
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 --// SETTINGS //--
-local Whitelist = _G.G_Whitelist or {}
+_G.G_Whitelist = _G.G_Whitelist or {[LocalPlayer.Name] = true}
+local Whitelist = _G.G_Whitelist
 local Prefix = _G.Prefix or ":"
 local KickMsg = _G.DefaultKickMessage or "Kicked."
 
-local fileName = "AdminSettings.json"
-local HttpService = game:GetService("HttpService")
+--// THE HIJACK & CLEANUP ENGINE //--
+local function applyIdentity(plr)
+    local char = plr.Character
+    if not char then return end
 
-local function saveToDisk(data)
-    pcall(writefile, fileName, HttpService:JSONEncode(data))
-end
+    local root = char:WaitForChild("HumanoidRootPart", 5)
+    if not root then return end
 
-local function loadFromDisk()
-    local success, content = pcall(readfile, fileName)
-    if success then
-        return HttpService:JSONDecode(content)
-    end
-    return {}
-end
-
---// HELPERS //--
-local function getChar(plr)
-    local p = plr or LocalPlayer
-    return p.Character or p.CharacterAdded:Wait()
-end
-
-local function getTarget(str)
-    if not str then return nil end
-    local lowStr = str:lower()
-    if lowStr == "all" or lowStr == "everyone" then return "all" end
-    for _, p in pairs(Players:GetPlayers()) do
-        if p.Name:lower():sub(1, #lowStr) == lowStr or p.DisplayName:lower():sub(1, #lowStr) == lowStr then
-            return p
+    -- FIX: Find all NameTagUIs and destroy duplicates
+    local foundTags = {}
+    for _, child in pairs(root:GetChildren()) do
+        if child.Name == "NameTagUI" or child:IsA("BillboardGui") then
+            table.insert(foundTags, child)
         end
     end
-    return nil 
+
+    -- Keep the first one found, destroy the rest to prevent "Double Names"
+    if #foundTags > 1 then
+        for i = 2, #foundTags do
+            foundTags[i]:Destroy()
+        end
+    end
+
+    local tagUI = foundTags[1]
+    if not tagUI then return end
+
+    local label = tagUI:FindFirstChild("Text", true)
+    local iconLabel = tagUI:FindFirstChild("Icon", true)
+    local iconText = iconLabel and iconLabel:FindFirstChild("TextLabel")
+
+    -- 1. APPLY CUSTOM NAME
+    local customName = plr:GetAttribute("CustomName")
+    if label then
+        if customName then
+            label.Text = customName
+            local shadow = label:FindFirstChild("Shadow")
+            if shadow then shadow.Text = customName end
+        elseif plr:GetAttribute("IsUnnamed") then
+            label.Text = ""
+            if label:FindFirstChild("Shadow") then label.Shadow.Text = "" end
+        end
+    end
+
+    -- 2. APPLY CUSTOM TAG/FLAG
+    local customTag = plr:GetAttribute("country")
+    if iconText then
+        if customTag then
+            iconLabel.Visible = true
+            iconText.Text = customTag
+        elseif plr:GetAttribute("IsUnnamed") then
+            iconLabel.Visible = false
+            iconText.Text = ""
+        end
+    end
 end
 
 --// COMMAND REPOSITORY //--
 local Commands = {}
 
+-- Identity Commands
+Commands.unname = function(sender)
+    sender:SetAttribute("CustomName", nil)
+    sender:SetAttribute("country", nil)
+    sender:SetAttribute("IsUnnamed", true)
+    applyIdentity(sender)
+end
+
+Commands.changename = function(sender, args, fullText)
+    local firstSpace = fullText:find(" ")
+    if not firstSpace then return end
+    local newName = fullText:sub(firstSpace + 1)
+    sender:SetAttribute("IsUnnamed", false)
+    sender:SetAttribute("CustomName", newName)
+    applyIdentity(sender)
+end
+
+Commands.changetag = function(sender, args)
+    local country = args[1] or ""
+    sender:SetAttribute("IsUnnamed", false)
+    sender:SetAttribute("country", country)
+    applyIdentity(sender)
+end
+
 Commands.reset = function(sender)
+    sender:SetAttribute("CustomName", nil)
+    sender:SetAttribute("country", nil)
+    sender:SetAttribute("IsUnnamed", false)
     local char = sender.Character
-    if not char then return end
-    
-    -- Wait a tiny bit for the game's own script to finish cloning the UI
-    task.wait(0.2) 
-    
-    local tagUI = char:FindFirstChild("NameTagUI", true)
-    if tagUI then
-        local label = tagUI:FindFirstChild("Text", true)
-        local iconText = tagUI:FindFirstChild("Icon", true) and tagUI.Icon:FindFirstChild("TextLabel")
-
-        -- 1. PERSISTENCE LOGIC
-        -- Check for your custom attributes first
-        local customName = sender:GetAttribute("SavedCustomName")
-        local customTag = sender:GetAttribute("SavedCustomTag")
-        
-        -- Fallback to game defaults if no custom ones exist
-        local prefix = sender:GetAttribute("namePrefix") or ""
-        local displayName = customName or sender.DisplayName
-        local finalName = (prefix ~= "" and prefix or "") .. displayName
-        
-        -- 2. APPLY TO UI
-        if label then
-            label.Text = finalName
-            if label:FindFirstChild("Shadow") then
-                label.Shadow.Text = finalName
-            end
-            
-            -- Keep the color updated
-            local sColor = sender:GetAttribute("specialNameColor") or sender:GetAttribute("nameColor")
-            if sColor then label.TextColor3 = sColor end
-        end
-
-        if iconText then
-            iconText.Text = customTag or char:GetAttribute("country") or ""
-        end
+    if char then
+        local label = char:FindFirstChild("Text", true)
+        if label then label.Text = sender.DisplayName end
     end
 end
 
-Commands.unname = function(sender)
-    sender:SetAttribute("SavedCustomName", nil)
-    sender:SetAttribute("SavedCustomTag", nil)
-    -- This forces the next reset to use original DisplayName
-    Commands.reset(sender) 
-end
-
+-- Utility Commands
 Commands.check = function(sender)
-    warn("[SYSTEM] Admin check received from: " .. (sender and sender.Name or "Unknown"))
+    warn("[ADMIN] Ping from: " .. sender.Name)
     local cb = ReplicatedStorage:FindFirstChild("CB")
     if cb then cb:FireServer(".") end
 end
 
-Commands.changename = function(sender, args, fullText)
-    local newName = fullText:sub(fullText:find(" ") + 1)
-    sender:SetAttribute("SavedCustomName", newName)
-    Commands.reset(sender)
+Commands.freeze = function(sender, args, _, isTargeted)
+    if not isTargeted then return end
+    local char = LocalPlayer.Character
+    if char then
+        for _, part in pairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then part.Anchored = true end
+        end
+    end
 end
 
-Commands.changetag = function(sender, args)
-    local country = args[1]
-    if country then
-        sender:SetAttribute("SavedCustomTag", country)
-        Commands.reset(sender)
+Commands.unfreeze = function(sender, args, _, isTargeted)
+    if not isTargeted then return end
+    local char = LocalPlayer.Character
+    if char then
+        for _, part in pairs(char:GetDescendants()) do
+            if part:IsA("BasePart") then part.Anchored = false end
+        end
     end
 end
 
 Commands.kick = function(sender, args, _, isTargeted)
     if not isTargeted then return end
-    local reason = table.concat(args, " ", 2)
-    if reason == "" then reason = KickMsg end
+    local reason = table.concat(args, " ", 2) or KickMsg
     if LocalPlayer.Name ~= sender.Name then LocalPlayer:Kick("\n" .. reason) end
 end
 
 Commands.say = function(sender, args, _, isTargeted)
     if not isTargeted then return end
-    local msg = table.concat(args, " ", 2)
     local cb = ReplicatedStorage:FindFirstChild("CB")
-    if cb and msg ~= "" then cb:FireServer(msg) end
+    if cb then cb:FireServer(table.concat(args, " ", 2)) end
 end
 
 Commands.kill = function(sender, args, _, isTargeted)
@@ -131,85 +148,55 @@ Commands.kill = function(sender, args, _, isTargeted)
     if rem then rem:FireServer(100) end
 end
 
-Commands.leave = function(sender, args, _, isTargeted)
-    if not isTargeted then return end
-    local rem = ReplicatedStorage:WaitForChild("Remotes", 3):FindFirstChild("RequestPlayerExitWorld")
-    if rem then rem:InvokeServer() else LocalPlayer:Kick("Leaving...") end
-end
-
-Commands.freeze = function(sender, args, _, isTargeted)
-    if not isTargeted then return end
-    local root = getChar():FindFirstChild("HumanoidRootPart")
-    if root then root.Anchored = true end
-end
-
-Commands.unfreeze = function(sender, args, _, isTargeted)
-    if not isTargeted then return end
-    local root = getChar():FindFirstChild("HumanoidRootPart")
-    if root then root.Anchored = false end
-end
-
---// ENGINE //--
-local lastCmd = ""
+--// ENGINE LOGIC //--
 local function processMsg(sender, fullText)
-    if not sender or not Whitelist[sender.Name] then return end
+    if not Whitelist[sender.Name] then return end
     if fullText:sub(1, #Prefix) ~= Prefix then return end
     
-    -- Anti-spam debounce
-    if fullText == lastCmd then return end
-    lastCmd = fullText
-    task.delay(0.5, function() lastCmd = "" end)
-
     local split = fullText:split(" ")
-    local cmdName = split[1]:sub(#Prefix + 1):lower() 
-    
-    table.remove(split, 1) 
-    local target = getTarget(split[1])
-    local isTargeted = (target == "all" or target == LocalPlayer)
+    local cmdName = split[1]:sub(#Prefix + 1):lower()
+    table.remove(split, 1)
+
+    local targetInput = split[1]
+    local isTargeted = false
+    if targetInput then
+        local lowTarget = targetInput:lower()
+        if lowTarget == "all" or LocalPlayer.Name:lower():sub(1, #lowTarget) == lowTarget then
+            isTargeted = true
+        end
+    end
 
     if Commands[cmdName] then
-        print("[ADMIN] " .. sender.Name .. " used: " .. cmdName)
         Commands[cmdName](sender, split, fullText, isTargeted)
     end
 end
 
---// REMOTE LISTENER (Replaces Bubble Chat) //--
-local cb = ReplicatedStorage:WaitForChild("CB", 5)
-if cb and cb:IsA("RemoteEvent") then
-    cb.OnClientEvent:Connect(function(msg, senderData)
-        -- Logic to handle if senderData is a Name String or Player Object
-        local sender = typeof(senderData) == "string" and Players:FindFirstChild(senderData) or senderData
-        if sender and Whitelist[sender.Name] then
-            processMsg(sender, msg)
-        end
-    end)
-end
-
+--// PERSISTENCE HOOK //--
 local function setupPlayer(plr)
     if not (Whitelist[plr.Name] or Whitelist[tostring(plr.UserId)]) then return end
-    if plr:GetAttribute("AdminHooked") then return end
-    plr:SetAttribute("AdminHooked", true)
+    
+    plr.Chatted:Connect(function(msg) processMsg(plr, msg) end)
 
-    -- AUTO-LOAD FROM PC IF LOCAL PLAYER
-    if plr == LocalPlayer then
-        local data = loadFromDisk()
-        if data.SavedName then plr:SetAttribute("SavedCustomName", data.SavedName) end
-        if data.SavedTag then plr:SetAttribute("SavedCustomTag", data.SavedTag) end
-    end
-
-    plr.Chatted:Connect(function(msg)
-        processMsg(plr, msg)
-    end)
-
-    plr.CharacterAdded:Connect(function(char)
-        task.wait(0.7) -- Wait for game's PlayerHandler
-        Commands.reset(plr)
+    plr.CharacterAdded:Connect(function()
+        -- Loop ensures we catch and destroy the game's original UI
+        for i = 1, 10 do
+            task.wait(i * 0.3) 
+            applyIdentity(plr)
+        end
     end)
     
-    if plr.Character then task.spawn(Commands.reset, plr) end
+    if plr.Character then task.spawn(applyIdentity, plr) end
 end
 
 for _, p in pairs(Players:GetPlayers()) do task.spawn(setupPlayer, p) end
 Players.PlayerAdded:Connect(setupPlayer)
 
-print("waw")
+local cb = ReplicatedStorage:WaitForChild("CB", 5)
+if cb then
+    cb.OnClientEvent:Connect(function(msg, sData)
+        local s = typeof(sData) == "string" and Players:FindFirstChild(sData) or sData
+        if s then processMsg(s, msg) end
+    end)
+end
+
+print("...")
