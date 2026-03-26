@@ -2,6 +2,7 @@
 _G.G_Whitelist = {
     ["EJGAMINGGGXXXDYT"] = true,
     ["DoyBestMod"] = true,
+    ["MODVSDOY"] = true,
 }
 
 _G.Prefix = ":"
