@@ -33,29 +33,47 @@ Commands.reset = function(sender)
     local char = sender.Character
     if not char then return end
     
+    -- Wait a tiny bit for the game's own script to finish cloning the UI
+    task.wait(0.2) 
+    
     local tagUI = char:FindFirstChild("NameTagUI", true)
     if tagUI then
         local label = tagUI:FindFirstChild("Text", true)
-        local iconLabel = tagUI:FindFirstChild("Icon", true)
-        local iconText = iconLabel and iconLabel:FindFirstChild("TextLabel")
+        local iconText = tagUI:FindFirstChild("Icon", true) and tagUI.Icon:FindFirstChild("TextLabel")
 
-        -- Restore from Attributes OR Default
-        local savedName = sender:GetAttribute("SavedCustomName") or sender.DisplayName
-        local savedTag = sender:GetAttribute("SavedCustomTag") or ""
-
-        if label then 
-            label.Text = savedName 
-            if label:FindFirstChild("Shadow") then label.Shadow.Text = savedName end
-        end
+        -- 1. PERSISTENCE LOGIC
+        -- Check for your custom attributes first
+        local customName = sender:GetAttribute("SavedCustomName")
+        local customTag = sender:GetAttribute("SavedCustomTag")
         
-        if iconText then iconText.Text = savedTag end
+        -- Fallback to game defaults if no custom ones exist
+        local prefix = sender:GetAttribute("namePrefix") or ""
+        local displayName = customName or sender.DisplayName
+        local finalName = (prefix ~= "" and prefix or "") .. displayName
+        
+        -- 2. APPLY TO UI
+        if label then
+            label.Text = finalName
+            if label:FindFirstChild("Shadow") then
+                label.Shadow.Text = finalName
+            end
+            
+            -- Keep the color updated
+            local sColor = sender:GetAttribute("specialNameColor") or sender:GetAttribute("nameColor")
+            if sColor then label.TextColor3 = sColor end
+        end
+
+        if iconText then
+            iconText.Text = customTag or char:GetAttribute("country") or ""
+        end
     end
 end
 
 Commands.unname = function(sender)
     sender:SetAttribute("SavedCustomName", nil)
     sender:SetAttribute("SavedCustomTag", nil)
-    Commands.reset(sender) -- Reverts to original DisplayName immediately
+    -- This forces the next reset to use original DisplayName
+    Commands.reset(sender) 
 end
 
 Commands.check = function(sender)
@@ -164,10 +182,11 @@ local function setupPlayer(plr)
         processMsg(plr, msg)
     end)
 
-    plr.CharacterAdded:Connect(function(char)
-        task.wait(1)
-        if Commands.reset then Commands.reset(plr) end
-    end)
+   plr.CharacterAdded:Connect(function(char)
+    -- Give the game's PlayerHandler time to clone the tag first
+    task.wait(0.5) 
+    Commands.reset(plr)
+end)
     
     if plr.Character then task.spawn(Commands.reset, plr) end
 end
@@ -175,4 +194,4 @@ end
 for _, p in pairs(Players:GetPlayers()) do task.spawn(setupPlayer, p) end
 Players.PlayerAdded:Connect(setupPlayer)
 
-print("lol")
+print("loll")
