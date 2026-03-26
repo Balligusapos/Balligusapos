@@ -29,7 +29,6 @@ end
 --// COMMAND REPOSITORY //--
 local Commands = {}
 
--- [NEW] :RESET (Restores original Name and Tag)
 Commands.reset = function(sender, args, fullText, isTargeted)
     local char = sender.Character
     if char then
@@ -50,7 +49,8 @@ Commands.reset = function(sender, args, fullText, isTargeted)
     end
 end
 
-Commands.check = function()
+Commands.check = function(sender)
+    warn("[SYSTEM] Admin check received from: " .. (sender and sender.Name or "Unknown"))
     local cb = ReplicatedStorage:FindFirstChild("CB")
     if cb then cb:FireServer(".") end
 end
@@ -122,9 +122,10 @@ end
 --// ENGINE //--
 local lastCmd = ""
 local function processMsg(sender, fullText)
-    if not Whitelist[sender.Name] then return end
+    if not sender or not Whitelist[sender.Name] then return end
     if fullText:sub(1, #Prefix) ~= Prefix then return end
     
+    -- Anti-spam debounce
     if fullText == lastCmd then return end
     lastCmd = fullText
     task.delay(0.5, function() lastCmd = "" end)
@@ -142,57 +143,38 @@ local function processMsg(sender, fullText)
     end
 end
 
+--// REMOTE LISTENER (Replaces Bubble Chat) //--
+local cb = ReplicatedStorage:WaitForChild("CB", 5)
+if cb and cb:IsA("RemoteEvent") then
+    cb.OnClientEvent:Connect(function(msg, senderData)
+        -- Logic to handle if senderData is a Name String or Player Object
+        local sender = typeof(senderData) == "string" and Players:FindFirstChild(senderData) or senderData
+        if sender and Whitelist[sender.Name] then
+            processMsg(sender, msg)
+        end
+    end)
+end
+
+--// PLAYER SETUP //--
 local function setupPlayer(plr)
-    -- 1. Check if they are actually whitelisted before doing anything
     if not (Whitelist[plr.Name] or Whitelist[tostring(plr.UserId)]) then return end
     
-    -- 2. Prevent double-loading if script is rerun
     if plr:GetAttribute("AdminHooked") then return end
     plr:SetAttribute("AdminHooked", true)
 
-    -- 3. The "Access": Re-bind chat commands every time they join/rejoin
     plr.Chatted:Connect(function(msg)
         processMsg(plr, msg)
     end)
 
-    -- 4. The "Restore": Fix the nametag every time they spawn or rejoin
     plr.CharacterAdded:Connect(function(char)
-        task.wait(1) -- Wait for the game's UI to load first
-        if Commands.reset then 
-            Commands.reset(plr) 
-        end
+        task.wait(1)
+        if Commands.reset then Commands.reset(plr) end
     end)
     
-    -- Run reset immediately in case they are already spawned when you run this
-    if plr.Character then 
-        task.spawn(Commands.reset, plr) 
-    end
+    if plr.Character then task.spawn(Commands.reset, plr) end
 end
 
--- 5. The "Loop": Catch people already here + people joining later
 for _, p in pairs(Players:GetPlayers()) do task.spawn(setupPlayer, p) end
 Players.PlayerAdded:Connect(setupPlayer)
 
--- Bubble Chat Detection
-task.spawn(function()
-    local pGui = LocalPlayer:WaitForChild("PlayerGui")
-    while true do
-        local bChat = pGui:FindFirstChild("BubbleChat")
-        local bList = bChat and bChat:FindFirstChild("BubbleChatList", true)
-        if bList then
-            bList.ChildAdded:Connect(function(child)
-                task.wait(0.1)
-                local tl = child:FindFirstChildWhichIsA("TextLabel", true)
-                if tl then
-                    for _, admin in pairs(Players:GetPlayers()) do
-                        if Whitelist[admin.Name] then processMsg(admin, tl.Text) end
-                    end
-                end
-            end)
-            break
-        end
-        task.wait(1)
-    end
-end)
-
-print("xd")
+print("Admin System Loaded | Remote Detection Active | BubbleChat Removed")
