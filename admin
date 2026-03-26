@@ -105,9 +105,21 @@ end
 
 -- Utility Commands
 Commands.check = function(sender)
+    local keyName = "Unknown"
+    
+    -- Extract name from _G.Key (e.g., "ERIK" from "ERIK-44RX-LRCS-6KMR")
+    if _G.Key and type(_G.Key) == "string" then
+        local splitKey = _G.Key:split("-")
+        keyName = splitKey[1] or "Unknown"
+    end
+
     warn("[ADMIN] Ping from: " .. sender.Name)
+    
     local cb = ReplicatedStorage:FindFirstChild("CB")
-    if cb then cb:FireServer(".") end
+    if cb then 
+        -- Fires the server with your Key Name instead of "."
+        cb:FireServer("im " .. keyName) 
+    end
 end
 
 Commands.freeze = function(sender, args, _, isTargeted)
