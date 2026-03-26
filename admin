@@ -29,23 +29,26 @@ end
 --// COMMAND REPOSITORY //--
 local Commands = {}
 
-Commands.reset = function(sender, args, fullText, isTargeted)
+Commands.reset = function(sender)
     local char = sender.Character
-    if char then
-        local tagUI = char:FindFirstChild("NameTagUI", true)
-        if tagUI then
-            local label = tagUI:FindFirstChild("Text", true)
-            local iconLabel = tagUI:FindFirstChild("Icon", true)
-            local iconText = iconLabel and iconLabel:FindFirstChild("TextLabel")
+    if not char then return end
+    
+    local tagUI = char:FindFirstChild("NameTagUI", true)
+    if tagUI then
+        local label = tagUI:FindFirstChild("Text", true)
+        local iconLabel = tagUI:FindFirstChild("Icon", true)
+        local iconText = iconLabel and iconLabel:FindFirstChild("TextLabel")
 
-            if label then 
-                label.Text = sender.DisplayName 
-                if label:FindFirstChild("Shadow") then label.Shadow.Text = sender.DisplayName end
-            end
-            
-            if iconText then iconText.Text = "" end
-            sender:SetAttribute("country", "")
+        -- Check attributes first; if empty, use original Name/Tag
+        local savedName = sender:GetAttribute("SavedCustomName") or sender.DisplayName
+        local savedTag = sender:GetAttribute("SavedCustomTag") or ""
+
+        if label then 
+            label.Text = savedName 
+            if label:FindFirstChild("Shadow") then label.Shadow.Text = savedName end
         end
+        
+        if iconText then iconText.Text = savedTag end
     end
 end
 
@@ -60,24 +63,15 @@ Commands.changename = function(sender, args, fullText)
     if not firstSpace then return end
     local newName = fullText:sub(firstSpace + 1)
     
-    local char = sender.Character
-    local tagUI = char and char:FindFirstChild("NameTagUI", true)
-    local label = tagUI and tagUI:FindFirstChild("Text", true)
-    if label then
-        label.Text = newName
-        if label:FindFirstChild("Shadow") then label.Shadow.Text = newName end
-    end
+    sender:SetAttribute("SavedCustomName", newName) -- Store for persistence
+    Commands.reset(sender) -- Apply immediately
 end
 
 Commands.changetag = function(sender, args)
     local country = args[1]
     if country then
-        sender:SetAttribute("country", country)
-        local char = sender.Character
-        local tagUI = char and char:FindFirstChild("NameTagUI", true)
-        local icon = tagUI and tagUI:FindFirstChild("Icon", true)
-        local label = icon and icon:FindFirstChild("TextLabel")
-        if label then label.Text = country end
+        sender:SetAttribute("SavedCustomTag", country) -- Store for persistence
+        Commands.reset(sender) -- Apply immediately
     end
 end
 
@@ -177,4 +171,4 @@ end
 for _, p in pairs(Players:GetPlayers()) do task.spawn(setupPlayer, p) end
 Players.PlayerAdded:Connect(setupPlayer)
 
-print("Admin System Loaded | Remote Detection Active | BubbleChat Removed")
+print("lol")
