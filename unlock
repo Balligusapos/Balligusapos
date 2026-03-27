@@ -18,26 +18,23 @@ end
 
 print("Verifying key: " .. UserKey:sub(1, 4) .. "....")
 
--- Helper: Convert Supabase Date to Readable "March 25, 2026, 09:20 AM"
+-- Helper: Display the text EXACTLY as it comes from Supabase (SST/PHT)
 local function format_readable_date(date_str)
-    if not date_str or date_str == "" or date_str == "NULL" then return "Never (Lifetime)" end
-    local y, m, d, h, min, s = date_str:match("(%d+)-(%d+)-(%d+)[T ](%d+):(%d+):(%d+)")
-    if y then
-        local unix = os.time({year=y, month=m, day=d, hour=h, min=min, sec=s})
-        return os.date("%B %d, %Y, %I:%M:%S %p", unix)
+    if not date_str or date_str == "" or date_str == "NULL" then 
+        return "Never (Lifetime)" 
     end
-    return "Never (Lifetime)"
+    -- The DB already did the work: "March 27 12:20 PM"
+    return date_str 
 end
 
--- Helper: Parse for Logic Comparison with 5-second Grace Period
+-- Helper: Logic Check (Simplified)
 local function parse_supabase_date(date_str)
     if not date_str or date_str == "" or date_str == "NULL" then return nil end
-    local y, m, d, h, min, s = date_str:match("(%d+)-(%d+)-(%d+)[T ](%d+):(%d+):(%d+)")
-    if y then 
-        -- Added +5 seconds buffer to prevent instant kicks from server/local clock desync
-        return os.time({year=y, month=m, day=d, hour=h, min=min, sec=s}) + 5 
-    end
-    return nil
+    
+    -- IMPORTANT: Because the DB now uses "March 27" (TEXT), 
+    -- we cannot use os.time math here easily. 
+    -- We return the string to signify a value exists.
+    return date_str
 end
 
 -- Helper: Delete key from DB
