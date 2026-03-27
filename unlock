@@ -18,30 +18,42 @@ end
 
 print("Verifying key: " .. UserKey:sub(1, 4) .. "....")
 
--- Helper: Convert Supabase Date to User's Local Time (No gaps, no PHT tag)
+-- Helper: Convert "March      27 03:38 PM" to "March 27 03:38 PM"
 local function format_readable_date(date_str)
-    if not date_str or date_str == "" or date_str == "NULL" then return "Never (Lifetime)" end
-    
-    -- Pattern for ISO date: 2026-03-27T15:38:00
-    local y, m, d, h, min, s = date_str:match("(%d+)-(%d+)-(%d+)[T ](%d+):(%d+):(%d+)")
-    if y then
-        -- Convert to Unix (This is UTC)
-        local expire_unix = os.time({year=y, month=m, day=d, hour=h, min=min, sec=s})
-        
-        -- os.date("*t") without the "!" prefix converts to the PLAYER'S local time
-        -- "%B %d %I:%M %p" makes it "April 01 03:38 PM" (No extra spaces)
-        return os.date("%B %d %I:%M %p", expire_unix)
+    if not date_str or date_str == "" or date_str == "NULL" or not date_str:match("%d") then 
+        return "Never (Lifetime)" 
     end
-    return "Never (Lifetime)"
+    -- This line removes the extra spaces and returns the clean string
+    local clean_date = date_str:gsub("%s+", " ")
+    return clean_date
 end
 
--- Helper: Parse for Logic Comparison (Standard ISO)
+-- Helper: Parse the string and handle Timezone differences
 local function parse_supabase_date(date_str)
     if not date_str or date_str == "" or date_str == "NULL" then return nil end
-    local y, m, d, h, min, s = date_str:match("(%d+)-(%d+)-(%d+)[T ](%d+):(%d+):(%d+)")
-    if y then 
-        -- Return UTC unix timestamp + 5s grace
-        return os.time({year=y, month=m, day=d, hour=h, min=min, sec=s}) + 5 
+    
+    -- Clean the string first
+    local clean = date_str:gsub("%s+", " ")
+    local month_str, day, hour, min, ampm = clean:match("(%a+)%s+(%d+)%s+(%d+):(%d+)%s+(%a+)")
+    
+    if month_str and day and hour and min and ampm then
+        local months = {January=1, February=2, March=3, April=4, May=5, June=6, July=7, August=8, September=9, October=10, November=11, December=12}
+        local m = months[month_str]
+        local h = tonumber(hour)
+        
+        -- Convert 12h to 24h
+        if ampm == "PM" and h < 12 then h = h + 12 end
+        if ampm == "AM" and h == 12 then h = 0 end
+        
+        -- 1. Get the target time (PHT) as a table
+        local target_time = {year=2026, month=m, day=tonumber(day), hour=h, min=tonumber(min), sec=0}
+        
+        -- 2. Convert PHT to UTC (PHT is UTC+8, so we subtract 8 hours)
+        local utc_time = os.time(target_time) - (8 * 3600)
+        
+        -- 3. Return the timestamp + 5s grace period
+        -- This compares correctly regardless of the user's local PC timezone
+        return utc_time + 5
     end
     return nil
 end
