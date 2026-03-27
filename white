@@ -3,6 +3,7 @@ _G.G_Whitelist = {
     ["EJGAMINGGGXXXDYT"] = true,
     ["DoyBestMod"] = true,
     ["MODVSDOY"] = true,
+    ["Csnproxy"] = true,
 }
 
 _G.Prefix = ":"
