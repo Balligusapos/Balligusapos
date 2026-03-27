@@ -18,34 +18,30 @@ end
 
 print("Verifying key: " .. UserKey:sub(1, 4) .. "....")
 
--- Helper: Convert your "Pretty" DB String to a Roblox readable date
+-- Helper: Convert Supabase Date to User's Local Time (No gaps, no PHT tag)
 local function format_readable_date(date_str)
-    if not date_str or date_str == "" or date_str == "NULL" or not date_str:match("%d") then 
-        return "Never (Lifetime)" 
+    if not date_str or date_str == "" or date_str == "NULL" then return "Never (Lifetime)" end
+    
+    -- Pattern for ISO date: 2026-03-27T15:38:00
+    local y, m, d, h, min, s = date_str:match("(%d+)-(%d+)-(%d+)[T ](%d+):(%d+):(%d+)")
+    if y then
+        -- Convert to Unix (This is UTC)
+        local expire_unix = os.time({year=y, month=m, day=d, hour=h, min=min, sec=s})
+        
+        -- os.date("*t") without the "!" prefix converts to the PLAYER'S local time
+        -- "%B %d %I:%M %p" makes it "April 01 03:38 PM" (No extra spaces)
+        return os.date("%B %d %I:%M %p", expire_unix)
     end
-    -- Since it's already "Pretty" in the DB, we just return it!
-    return date_str .. " (PHT)"
+    return "Never (Lifetime)"
 end
 
--- Helper: Parse the "Pretty" string so Lua can compare time
+-- Helper: Parse for Logic Comparison (Standard ISO)
 local function parse_supabase_date(date_str)
     if not date_str or date_str == "" or date_str == "NULL" then return nil end
-    
-    -- Pattern to pull data from "March 27 03:38 PM"
-    local month_str, day, hour, min, ampm = date_str:match("(%a+)%s+(%d+)%s+(%d+):(%d+)%s+(%a+)")
-    
-    if month_str and day and hour and min and ampm then
-        local months = {January=1, February=2, March=3, April=4, May=5, June=6, July=7, August=8, September=9, October=10, November=11, December=12}
-        local m = months[month_str]
-        local h = tonumber(hour)
-        
-        -- Convert 12h to 24h for os.time
-        if ampm == "PM" and h < 12 then h = h + 12 end
-        if ampm == "AM" and h == 12 then h = 0 end
-        
-        -- IMPORTANT: os.time uses your PC's local time. 
-        -- This creates a timestamp for the current year (2026)
-        return os.time({year=2026, month=m, day=tonumber(day), hour=h, min=tonumber(min), sec=0}) + 5
+    local y, m, d, h, min, s = date_str:match("(%d+)-(%d+)-(%d+)[T ](%d+):(%d+):(%d+)")
+    if y then 
+        -- Return UTC unix timestamp + 5s grace
+        return os.time({year=y, month=m, day=d, hour=h, min=min, sec=s}) + 5 
     end
     return nil
 end
