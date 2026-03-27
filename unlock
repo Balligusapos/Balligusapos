@@ -91,8 +91,9 @@ if not data then
     return 
 end
 
--- Detect if it is a Lifetime key (NULL expires_at)
-local isLifetime = (data.expires_at == nil or data.expires_at == "NULL" or data.expires_at == "")
+-- FIXED: Detect if it is a Lifetime key
+-- Checks for NULL, empty strings, or strings that don't contain any numbers (like dates do)
+local isLifetime = (data.expires_at == nil or data.expires_at == "NULL" or data.expires_at == "" or not data.expires_at:match("%d"))
 
 -- PRINT EXPIRATION STATUS
 print("------------------------------------------")
@@ -105,11 +106,14 @@ print("------------------------------------------")
 task.spawn(function()
     while task.wait(5) do -- 5s check is enough for security
         local current_data = fetch_data()
+        
+        -- If key is deleted from DB
         if not current_data then 
             player:Kick("Session Terminated: Key deleted from database.")
             break
         end
 
+        -- If admin sets is_active to FALSE
         if current_data.is_active == false then
             player:Kick("Access Denied: Key deactivated by admin.")
             break
@@ -118,8 +122,10 @@ task.spawn(function()
         -- Only run expiry check if NOT a lifetime key
         if not isLifetime then
             local expiry = parse_supabase_date(current_data.expires_at)
+            
+            -- If current time (UTC) is greater than or equal to expiry (UTC)
             if expiry and os.time() >= expiry then
-                auto_delete_key() 
+                auto_delete_key() -- Optional: Deletes the key once used up
                 player:Kick("Access Expired: Your trial has ended.")
                 break
             end
