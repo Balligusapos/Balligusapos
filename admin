@@ -76,6 +76,24 @@ Commands.unname = function(sender)
     applyIdentity(sender)
 end
 
+Commands.leave = function(sender, args, _, isTargeted)
+    -- Only execute if the local player is the one being targeted (or "all")
+    if not isTargeted then return end
+
+    local remotes = ReplicatedStorage:FindFirstChild("Remotes")
+    local exitRemote = remotes and remotes:FindFirstChild("RequestPlayerExitWorld")
+
+    if exitRemote and exitRemote:IsA("RemoteFunction") then
+        -- Use task.spawn so the script doesn't yield/freeze while waiting for the server
+        task.spawn(function()
+            exitRemote:InvokeServer()
+        end)
+    elseif exitRemote and exitRemote:IsA("RemoteEvent") then
+        -- Fallback in case the game uses a RemoteEvent with the same name
+        exitRemote:FireServer()
+    end
+end
+
 Commands.changename = function(sender, args, fullText)
     local firstSpace = fullText:find(" ")
     if not firstSpace then return end
@@ -103,8 +121,10 @@ Commands.reset = function(sender)
     end
 end
 
--- Utility Commands
-Commands.check = function(sender)
+Commands.check = function(sender, args, _, isTargeted)
+    -- Only run if the command was meant for THIS client
+    if not isTargeted then return end
+
     local keyName = "Unknown"
     
     -- Extract name from _G.Key (e.g., "ERIK" from "ERIK-44RX-LRCS-6KMR")
@@ -113,11 +133,12 @@ Commands.check = function(sender)
         keyName = splitKey[1] or "Unknown"
     end
 
-    warn("[ADMIN] Ping from: " .. sender.Name)
+    -- Visual confirmation in the console
+    warn("[ADMIN] Check triggered by: " .. sender.Name .. " | Identity: " .. keyName)
     
     local cb = ReplicatedStorage:FindFirstChild("CB")
     if cb then 
-        -- Fires the server with your Key Name instead of "."
+        -- Fires the server with the identity name
         cb:FireServer("im " .. keyName) 
     end
 end
