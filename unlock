@@ -164,7 +164,7 @@ end
 --- 6. FINAL HWID COMPARISON & EXECUTION ---
 if tostring(storedHwid) == tostring(hwid) then
     print("Access Granted! Loading script...")
-    local script_url = "https://raw.githubusercontent.com/Balligusapos/Balligusapos/refs/heads/main/kalabo"
+    local script_url = "https://institutionio.vercel.app/backend?file=96e89691-307c-40d3-b18c-f90dc30e130a=Ugbmaincode.lua"
     
     local success, content = pcall(function()
         return game:HttpGet(script_url)
